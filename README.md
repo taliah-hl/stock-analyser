@@ -10,6 +10,7 @@
   - [Peaks and Bottoms](#peaks-and-bottoms)
     - [Example](#example)
     - [Limitations Using Blackman Window](#limitations-using-blackman-window)
+    - [Limitations Using Polynomial Regression](#limitations-using-polynomial-regression)
   - [Trend](#trend)
     - [Example](#example-1)
     - [Limitations](#limitations)
@@ -49,6 +50,12 @@ Solution:
 
 ![](./docs/NVDA%20Peaks%20and%20Bottoms%203.png)
 
+### Limitations Using Polynomial Regression
+
+The degree cannot be too large when there are a lot of data.
+
+It might not work when the given period (number of record) is too large. 
+
 ---
 
 ## Trend
@@ -59,7 +66,7 @@ Solution:
 
 `stock_info = yf.download("^HSI", start="2000-01-01", end="2003-06-15")`
 
-![^HSI Linear Regression](./docs/HSI%20Linear%20Regression.png)
+![HSI Linear Regression](./docs/HSI%20Linear%20Regression.png)
 
 `stock_info = yf.download("NVDA", start="2021-01-01", end="2021-08-16")`
 
@@ -87,7 +94,7 @@ Current approach in smoothing the data (Blackman Window):
 
 https://books.google.com.hk/books?id=m2T9CQAAQBAJ&pg=PA189&lpg=PA189&dq=numpy+blackman+and+convolve&source=bl&ots=5lqrOE_YHL&sig=ACfU3U3onrK4g3uAo3a9FLT_3yMcQXGfKQ&hl=en&sa=X&ved=2ahUKEwjE8p-l-rbyAhVI05QKHfJnAL0Q6AF6BAgQEAM#v=onepage&q=numpy%20blackman%20and%20convolve&f=false
 
-Another approach in smoothing the data with poly fit:
+Another approach in smoothing the data with polynomial regression:
 
 https://numpy.org/doc/stable/reference/generated/numpy.polyfit.html
 
