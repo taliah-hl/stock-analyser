@@ -9,10 +9,10 @@
 - [Logic and Design](#logic-and-design)
   - [Peaks and Bottoms](#peaks-and-bottoms)
     - [Example](#example)
-    - [Limitations](#limitations)
+    - [Limitations Using Blackman Window](#limitations-using-blackman-window)
   - [Trend](#trend)
     - [Example](#example-1)
-    - [Limitations](#limitations-1)
+    - [Limitations](#limitations)
 - [Reference](#reference)
   - [Smoothing the Data ("Noise" Reduction)](#smoothing-the-data-noise-reduction)
   - [Linear Regression](#linear-regression)
@@ -33,7 +33,7 @@
 
 ![](./docs/NVDA%20Peaks%20and%20Bottoms.png)
 
-### Limitations
+### Limitations Using Blackman Window
 
 For a longer period of time, the value of `smooth_data_N` and `find_extrema_interval` has to change to other value.
 
@@ -83,9 +83,13 @@ The best-fit line might not be perfect.
 
 ## Smoothing the Data ("Noise" Reduction)
 
-Current approaching in smoothing the data:
+Current approach in smoothing the data (Blackman Window):
 
 https://books.google.com.hk/books?id=m2T9CQAAQBAJ&pg=PA189&lpg=PA189&dq=numpy+blackman+and+convolve&source=bl&ots=5lqrOE_YHL&sig=ACfU3U3onrK4g3uAo3a9FLT_3yMcQXGfKQ&hl=en&sa=X&ved=2ahUKEwjE8p-l-rbyAhVI05QKHfJnAL0Q6AF6BAgQEAM#v=onepage&q=numpy%20blackman%20and%20convolve&f=false
+
+Another approach in smoothing the data with poly fit:
+
+https://numpy.org/doc/stable/reference/generated/numpy.polyfit.html
 
 Another approach in smoothing the data:
 
