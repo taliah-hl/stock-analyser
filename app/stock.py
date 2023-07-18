@@ -17,7 +17,7 @@ class Stock:
     def get_stock_close_data(self) -> pd.DataFrame:
         return pd.DataFrame(self.stock_info["Close"])
 
-    def smooth_data(self, close_data: pd.Series, N: int=15) -> pd.DataFrame:
+    def smoothen(self, close_data: pd.Series, N: int=15) -> pd.DataFrame:
         # Smaller N -> More accurate
         # Larger N -> More smooth
         # Ref: https://books.google.com.hk/books?id=m2T9CQAAQBAJ&pg=PA189&lpg=PA189&dq=numpy+blackman+and+convolve&source=bl&ots=5lqrOE_YHL&sig=ACfU3U3onrK4g3uAo3a9FLT_3yMcQXGfKQ&hl=en&sa=X&ved=2ahUKEwjE8p-l-rbyAhVI05QKHfJnAL0Q6AF6BAgQEAM#v=onepage&q=numpy%20blackman%20and%20convolve&f=false
@@ -80,7 +80,7 @@ class Stock:
     def list_close_stock_peak_bottom_info(self):
         result = []
         stock_close_data = self.get_stock_close_data()
-        smoothed_close_data = self.smooth_data(stock_close_data["Close"], N=self.smooth_data_N)
+        smoothed_close_data = self.smoothen(stock_close_data["Close"], N=self.smooth_data_N)
         stock_close_data = stock_close_data[self.smooth_data_N:-self.smooth_data_N]
         smoothed_close_data = smoothed_close_data[self.smooth_data_N:-self.smooth_data_N]
 
@@ -97,7 +97,7 @@ class Stock:
 
     def plot_close_stock_peak_bottom_info(self):
         stock_close_data = self.get_stock_close_data()
-        smoothed_close_data = self.smooth_data(stock_close_data["Close"], N=self.smooth_data_N)
+        smoothed_close_data = self.smoothen(stock_close_data["Close"], N=self.smooth_data_N)
         stock_close_data = stock_close_data[self.smooth_data_N:-self.smooth_data_N]
         smoothed_close_data = smoothed_close_data[self.smooth_data_N:-self.smooth_data_N]
 

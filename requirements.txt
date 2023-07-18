@@ -1,0 +1,7 @@
+loguru
+typing
+numpy
+pandas
+scipy
+matplotlib
+yfinance
