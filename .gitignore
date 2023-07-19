@@ -8,6 +8,8 @@ __pycache__/
 
 # trial file
 try.py
+*try*.py
+*try*.ipynb
 
 # Distribution / packaging
 .Python
