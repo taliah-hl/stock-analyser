@@ -87,7 +87,6 @@ def get_local_extrema(original_close_data: pd.DataFrame, smoothed_price_data: pd
     interval: window to locate peak/bottom price on raw price time serise by local extrema of smoothed price time sereise
 
     """
-    print("this is from stock")
     peaks = get_local_maxima(original_close_data, smoothed_price_data, interval)
     bottoms = get_local_minima(original_close_data, smoothed_price_data, interval)
     local_extrema = pd.concat([peaks, bottoms]).sort_index()
@@ -107,7 +106,7 @@ def get_local_extrema(original_close_data: pd.DataFrame, smoothed_price_data: pd
     return local_extrema
 
 
-def add_column_ma(stock_data: pd.DataFrame, period: int=9, mode='ma', major_col_name='Close'):
+def add_column_ma(stock_data: pd.DataFrame, period: int=9, mode: str='ma', price_col_name: str='Close'):
     """
     add a column of moving average (MA) to stock_data
     
@@ -116,23 +115,24 @@ def add_column_ma(stock_data: pd.DataFrame, period: int=9, mode='ma', major_col_
     - stock_data: DataFrame with column named['Close'] which is closing price of each day
     - period: time period (day)
     - mode options: moving average:'ma', exponential moving average:'ema', displaced moving average:'dma'
+    - price_col_name: name of column of original stock price
     """
 
     if(mode =='ma'):
-        stock_data[f'ma{period}'] = stock_data['Close'].rolling(period).mean()
+        stock_data[f'ma{period}'] = stock_data[f'{price_col_name}'].rolling(period).mean()
         stock_data[f'ma{period}'].dropna(inplace=True)
         
     elif mode =='dma':
-        ma = stock_data['Close'].rolling(period).mean()
+        ma = stock_data[f'{price_col_name}'].rolling(period).mean()
         ma.dropna(inplace=True)
         stock_data[f"dma{period}"] = ma.shift(math.ceil(period/2)*(-1))
 
     elif(mode=='ema'):
-        stock_data[f'ema{period}'] = stock_data['Close'].ewm(span=period, adjust=False).mean()
+        stock_data[f'ema{period}'] = stock_data[f'{price_col_name}'].ewm(span=period, adjust=False).mean()
 
     return stock_data
 
-def smoothen(self, original_data: pd.Series, N: int=10) -> pd.DataFrame:
+def smoothen(original_data: pd.Series, N: int=10) -> pd.DataFrame:
     """
     Return: 1-col-DataFrame of smoothen data (length differ with original data)
     Argument
@@ -147,3 +147,49 @@ def smoothen(self, original_data: pd.Series, N: int=10) -> pd.DataFrame:
     smoothed_data = pd.DataFrame(smoothed_data, index=original_data.index, columns=["Data"])
 
     return smoothed_data
+
+def plotX(
+        org_price: pd.DataFrame, 
+        extrema: pd.DataFrame, 
+        plt_title: str='Extrema',
+        curves: list=[], 
+        op_col_name: str='Close',
+        extrema_col_name: str='price', 
+        percent_col_name: str='percentage change',
+        
+       ):
+    
+    plt.figure(figsize=(12, 6), dpi=100)
+    plt.plot(org_price[f'{op_col_name}'], label='close price', color='lightseagreen')
+    plt.plot(extrema[f'{extrema_col_name}'], "x", color='red')
+
+    for item in curves:    
+        plt.plot(item, 
+                 label=item.name if isinstance(item.name, str) else '',
+                 alpha=0.9)
+    for date, extrema, percent in zip(extrema.index, extrema[f'{extrema_col_name}'], extrema[f'{percent_col_name}']):
+        plt.annotate("{:.2f}".format(extrema)
+                 + ", {:.2%}".format(percent), (date, extrema), fontsize=6)
+    plt.legend()
+    plt.grid(which='major', color='lavender')
+    plt.grid(which='minor', color='lavender')
+    plt.title(plt_title)
+    plt.show()
+
+
+def runner(tickers: str, start: str, end: str, ma_mode: str, ma_T: int, smooth: bool=False):
+    """
+    run this function to download stock, plot extrema with smoothed DMA9
+
+    """
+    stock_info = yf.download(tickers, start=start, end=end)
+    stock_data = pd.DataFrame(stock_info["Close"])
+    stock_data = add_column_ma(stock_data, ma_T, ma_mode) # can amend
+    if smooth:
+        stock_data[f"{ma_mode}{ma_T}"] = smoothen(stock_data[f"{ma_mode}{ma_T}"])
+    local_extrema = get_local_extrema(stock_data['Close'], stock_data[f"{ma_mode}{ma_T}"])
+    plotX(stock_data, local_extrema,f"{tickers} {ma_mode}{ma_T}", [stock_data[f"{ma_mode}{ma_T}"]])
+
+
+if __name__ == "__main__":
+    runner()
