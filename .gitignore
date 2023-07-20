@@ -10,6 +10,7 @@ __pycache__/
 try.py
 *try*.py
 *try*.ipynb
+find_extrema_with_DMA.ipynb
 
 # Distribution / packaging
 .Python
