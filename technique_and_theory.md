@@ -48,8 +48,8 @@ ma10 = stock_data['Close'].rolling(10).mean()
 tma10 = ma10.rolling(10).mean()
 ```
 
-### 1.2 Other Mathematical Method
-### 1.2.1 Smoothen the curve by poly-fit
+### 2. Curve Smoothening
+### 2.1 Poly-fit
 
 advantage: no lagging
 
@@ -64,7 +64,7 @@ with warnings.catch_warnings():
     poly_fit = np.poly1d(np.polyfit(X, Y, degree))
 ```
 
-### 1.2.2 Smoothen the curve by linear convolution with np.blackman
+### 2.2 By linear convolution with np.blackman
 
 like smoothen the curve by merging with sine curve
 
@@ -95,7 +95,7 @@ smoothed_data = np.convolve(window / window.sum(), original_data, mode='same')
 
 ```
 
-## 2. Volitility
+## 3. Volitility
 
 measure of how fluctuate is the stock price
 

@@ -1,4 +1,11 @@
+
+
 # Stock
+
+# 21 Jul Update
+
+run **app/stock_analyser.py** or **runner.ipynb** to try
+main class: app/stock_analyser.py
 
 - Find peaks and bottoms
 - Find trend
