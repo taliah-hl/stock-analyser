@@ -24,6 +24,8 @@ class StockAnalyser():
         self.extrema = None
         self.smoothen_price = None
         self.all_vertex= None
+        self.peak_indexes=[]
+        self.bottom_indexes=[]
     
     
     def get_close_price(self) -> pd.DataFrame:
@@ -47,14 +49,29 @@ class StockAnalyser():
     def get_peaks(self)-> pd.DataFrame:
         """
         Return: DataFrame of peaks with date
+         
+        TO BE IMPLEMENT
         """
-        return pd.DataFrame(self.peaks)
+        
     
     def get_bottoms(self)-> pd.DataFrame:
         """
         Return: DataFrame of bottoms with date
+        
+        TO BE IMPLEMENT
         """
-        return pd.DataFrame(self.bottoms)
+    
+    def get_peak_idx_lst(self)-> list:
+        """
+        return: list of index of all peaks
+        """
+        return self.peak_indexes
+    
+    def get_bottom_idx_lst(self)->list:
+        """
+        return: list of index of all bottoms
+        """
+        return self.bottom_indexes
     
     def get_extrema(self)-> pd.DataFrame:
         """
@@ -285,20 +302,16 @@ class StockAnalyser():
             else:
                 data_src = self.stock_data[data]
 
-            bottom_indexs = argrelextrema(data_src.to_numpy(), np.less)[0]
-            peak_indexes = argrelextrema(data_src.to_numpy(), np.greater)[0]
+            self.bottom_indexs = argrelextrema(data_src.to_numpy(), np.less)[0]
+            self.peak_indexes = argrelextrema(data_src.to_numpy(), np.greater)[0]
             
             extrema_idx_lst=[]
-            for i in bottom_indexs:
+            for i in self.bottom_indexs:
                 extrema_idx_lst.append((i, 0))  # 0 =bottom
-            print("len of bottom_indexs: ", len(bottom_indexs))
-
             
-            for i in peak_indexes:
+            for i in self.peak_indexes:
                 extrema_idx_lst.append((i, 1))  #1=peak
-            print("len of peak_indexes: ", len(peak_indexes))
-            print("len of extrema_idx_lst: ", len(extrema_idx_lst))
-
+  
             extrema_idx_lst.sort()
             
             bottom_dates = []
@@ -321,8 +334,7 @@ class StockAnalyser():
             self.extrema.index.name = "date"
 
             print(self.extrema)
-            print("len of self.extrema: ", len(self.extrema))
-
+ 
 
             # bottoms = bottoms[~bottoms.index.duplicated()]
             # bottoms.index.name = "date"
@@ -389,14 +401,15 @@ class StockAnalyser():
         # pd.DataFrame({'percetage': percentage_change_lst})
         self.extrema['percentage change'] = percentage_change_lst
 
-    def plot_extrema(self, cols: list=[], plt_title: str='Extrema', annot: bool=True) :
+    def plot_extrema(self, cols: list=[], plt_title: str='Extrema', annot: bool=True, text_box: str='') :
 
         """
         default plot function, plot closing price of self.stock_data, self.smoothen_price and self.extrema
         
         Paramter
         -------
-        cols: col names to plot
+        cols: col names to plot | text_box: string in text box to print
+
          """
         plt.figure(figsize=(24, 8), dpi=150)
         plt.plot(self.stock_data['Close'], label='close price', color='midnightblue', alpha=0.9)
@@ -415,16 +428,34 @@ class StockAnalyser():
         if annot:
             for date, extrema, percent in zip(self.extrema[self.extrema["type"]=="peak"].index, self.extrema[self.extrema["type"]=="peak"]['price'], self.extrema[self.extrema["type"]=="peak"]['percentage change']):
                 plt.annotate("{:.2f}".format(extrema)
-                    + ", {:.2%}".format(percent), (date, extrema+4), fontsize=6)
+                    + ", {:.2%}".format(percent), (date, extrema+4), fontsize=5)
                 
             for date, extrema, percent in zip(self.extrema[self.extrema["type"]=="bottom"].index, self.extrema[self.extrema["type"]=="bottom"]['price'], self.extrema[self.extrema["type"]=="bottom"]['percentage change']):
                 plt.annotate("{:.2f}".format(extrema)
-                    + ", {:.2%}".format(percent), (date, extrema-6), fontsize=6)
+                    + ", {:.2%}".format(percent), (date, extrema-6), fontsize=5)
                 
+        
+        #plt.text(text_box, (self.stock_data.index[1], self.stock_data['Close'][1]))
+        plt.text(0.01, 1,  text_box, fontsize=7, color='saddlebrown', ha='left', va='bottom',  transform=plt.gca().transAxes) 
+
+        #percentage change from last peak
+
+        maxval = self.stock_data['Close'].iloc[list(range(self.peak_indexes[-1]-1, len(self.stock_data)))].max()
+        print("maxval: ", maxval)
+        print("cur price: ", self.stock_data['Close'].iloc[-1])
+        perc = ( self.stock_data['Close'].iloc[-1] - maxval)/maxval
+
+        plt.text(0.9, 1.1, "lastest high: "+"{:.2f}".format(maxval), fontsize=6,  ha='left', va='top',  transform=plt.gca().transAxes)
+        plt.text(0.9, 1.08, "current:  "+"{:.2f}".format(self.stock_data['Close'].iloc[-1]), fontsize=6,  ha='left', va='top',  transform=plt.gca().transAxes)
+        plt.text(0.9, 1.06, 'drop from last high: '+'{:.2%}'.format(perc), fontsize=6,  ha='left', va='top',  transform=plt.gca().transAxes)
+
+
+        # plot on relative position of graph regardless of value of x/y axis
         plt.legend()
         plt.grid(which='major', color='lavender')
         plt.grid(which='minor', color='lavender')
         plt.title(plt_title)
+        
         plt.show()
 
 def runner(tickers: str, start: str, end: str, 
@@ -475,7 +506,7 @@ def runner(tickers: str, start: str, end: str,
     print("-- extrema --")
     print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql', floatfmt=(None,".2f", None,  ".2%")))
     
-    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {ma_mode}{ma_T}", annot=True)
+    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {ma_mode}{ma_T}", annot=True, text_box=f"{tickers}, {start} - {end}, window={wind}")
 
 def runner_noma(tickers: str, start: str, end: str,smooth: bool=False, wind: int=10, smooth_ext: int=10):
     stock = StockAnalyser(tickers, start, end)
@@ -507,12 +538,11 @@ def runner_polyfit(tickers: str, start: str, end: str,
     
     
 if __name__ == "__main__":
-    # runner('NVDA', '2022-10-20', '2023-07-22', ma_mode='ema', ma_T=10, smooth=False, wind=0, smooth_ext=0)
+    runner('TSLA', '2022-04-20', '2023-07-22', ma_mode='ema', ma_T=10, smooth=False, wind=5, smooth_ext=0)
     #runner_polyfit('NVDA', '2022-10-20', '2023-07-22',wind=10)
-    stock = StockAnalyser('NVDA', '2022-10-20', '2023-07-20')
 
-    stock.add_column_ma('ema', 10)
-    stock.set_extrema_left_window('ema10', 0)
+    # stock.add_column_ma('ema', 10)
+    # stock.set_extrema_left_window('ema10', 0)
 
     # stock_data = stock.get_close_price()
     # print(stock_data)
