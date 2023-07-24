@@ -128,9 +128,9 @@ class StockAnalyser():
         """
         window = np.blackman(N)
         smoothed_data = np.convolve(window / window.sum(), self.stock_data[f"{col_name}"], mode="same")
-        smoothed_data_chop = smoothed_data[:]
+        smoothed_data_chop = smoothed_data[1:-1]
         #exclude last and first raw
-        self.smoothen_price = pd.DataFrame(smoothed_data_chop, index=self.stock_data.index[:], columns=["Data"])
+        self.smoothen_price = pd.DataFrame(smoothed_data_chop, index=self.stock_data.index[1:-1], columns=["Data"])
 
     
     def set_smoothen_price_polyfit(self, col_name: str): #not work to smooth ma
@@ -216,6 +216,7 @@ class StockAnalyser():
         interval: window to locate peak/bottom price on raw price time serise by local extrema of smoothed price time sereise
         """
         peak_indexes = argrelextrema(smoothed_price_data.to_numpy(), np.greater)[0]
+        
         peak_dates = []
         peak_close = []
         for index in peak_indexes: #smoothed peak index
@@ -247,6 +248,8 @@ class StockAnalyser():
         """
 
         bottom_indexs = argrelextrema(smoothed_price_data.to_numpy(), np.less)[0]   
+        # print(type(bottom_indexs))
+        # print(bottom_indexs)
         bottom_dates = []
         bottom_close = []
         for index in bottom_indexs:
@@ -282,36 +285,66 @@ class StockAnalyser():
             else:
                 data_src = self.stock_data[data]
 
-            bottom_indexs = argrelextrema(data_src.to_numpy(), np.less)[0]  
+            bottom_indexs = argrelextrema(data_src.to_numpy(), np.less)[0]
+            peak_indexes = argrelextrema(data_src.to_numpy(), np.greater)[0]
+            
+            extrema_idx_lst=[]
+            for i in bottom_indexs:
+                extrema_idx_lst.append((i, 0))  # 0 =bottom
+            print("len of bottom_indexs: ", len(bottom_indexs))
+
+            
+            for i in peak_indexes:
+                extrema_idx_lst.append((i, 1))  #1=peak
+            print("len of peak_indexes: ", len(peak_indexes))
+            print("len of extrema_idx_lst: ", len(extrema_idx_lst))
+
+            extrema_idx_lst.sort()
+            
             bottom_dates = []
             bottom_close = []
-            for index in bottom_indexs:
-                lower_boundary = max(0, index - interval)
-                upper_boundary = min(index + 1, len(self.stock_data['Close']))
+            extrema_dates = []
+            extrema_close=[]
+            
+            prev_idx = 0
+            for item in extrema_idx_lst:
+                
+                lower_boundary = max(0, prev_idx, item[0] - interval)
+                upper_boundary = min(item[0] + 1, len(self.stock_data['Close']))
                 stock_data_in_interval = self.stock_data['Close'].iloc[list(range(lower_boundary, upper_boundary))]
-                bottom_dates.append(stock_data_in_interval.idxmin())
-                bottom_close.append(stock_data_in_interval.min())
-            bottoms = pd.DataFrame({"price": bottom_close, "type": 'bottom'}, index=bottom_dates)
-            bottoms = bottoms[~bottoms.index.duplicated()]
-            bottoms.index.name = "date"
+                
+                extrema_dates.append(stock_data_in_interval.idxmax() if item[1] else stock_data_in_interval.idxmin())
+                extrema_close.append((stock_data_in_interval.max(),'peak') if item[1] else (stock_data_in_interval.min(), 'bottom'))
+                prev_idx = item[0]
+            self.extrema = pd.DataFrame(extrema_close, columns=['price', 'type'], index=extrema_dates)
+            self.extrema = self.extrema[~self.extrema.index.duplicated()]
+            self.extrema.index.name = "date"
 
-            peak_indexes = argrelextrema(data_src.to_numpy(), np.greater)[0]
-            peak_dates = []
-            peak_close = []
-            for index in bottom_indexs:
-                lower_boundary = max(0, index - interval)
-                upper_boundary = min(index + 1, len(self.stock_data['Close']))
-                stock_data_in_interval = self.stock_data['Close'].iloc[list(range(lower_boundary, upper_boundary))]
-                peak_dates.append(stock_data_in_interval.idxmax())
-                peak_close.append(stock_data_in_interval.max())
-            peaks = pd.DataFrame({"price": peak_close, "type": 'peak'}, index=peak_dates)
-            peaks.index.name = "date"
-            peaks = peaks[~peaks.index.duplicated()]
+            print(self.extrema)
+            print("len of self.extrema: ", len(self.extrema))
 
-            self.extrema = pd.concat([peaks, bottoms]).sort_index()
+
+            # bottoms = bottoms[~bottoms.index.duplicated()]
+            # bottoms.index.name = "date"
+
+            # peak_indexes = argrelextrema(data_src.to_numpy(), np.greater)[0]
+            # peak_dates = []
+            # peak_close = []
+            # for index in peak_indexes:
+            #     lower_boundary = max(0, index - interval)
+            #     upper_boundary = min(index + 1, len(self.stock_data['Close']))
+            #     stock_data_in_interval = self.stock_data['Close'].iloc[list(range(lower_boundary, upper_boundary))]
+            #     peak_dates.append(stock_data_in_interval.idxmax())
+            #     peak_close.append(stock_data_in_interval.max())
+            # peaks = pd.DataFrame({"price": peak_close, "type": 'peak'}, index=peak_dates)
+            # peaks.index.name = "date"
+            # peaks = peaks[~peaks.index.duplicated()]
+
+            # self.extrema = pd.concat([peaks, bottoms]).sort_index()
     
             # calculate percentage change
             percentage_change_lst =[np.nan]
+            print(len(percentage_change_lst))
             for i in range(1, len(self.extrema)):
                 #print(local_extrema['price'][i])
                 percentage_change = (self.extrema['price'][i]-self.extrema['price'][i-1])/self.extrema['price'][i-1]
@@ -320,6 +353,7 @@ class StockAnalyser():
 
             # pd.DataFrame({'percetage': percentage_change_lst})
             self.extrema['percentage change'] = percentage_change_lst
+            print(self.extrema)
 
             
 
@@ -364,10 +398,10 @@ class StockAnalyser():
         -------
         cols: col names to plot
          """
-        plt.figure(figsize=(16, 6), dpi=150)
+        plt.figure(figsize=(24, 8), dpi=150)
         plt.plot(self.stock_data['Close'], label='close price', color='midnightblue', alpha=0.9)
-        plt.plot(self.extrema[self.extrema["type"]=="peak"]['price'], "x", color='limegreen')
-        plt.plot(self.extrema[self.extrema["type"]=="bottom"]['price'], "x", color='red')
+        plt.plot(self.extrema[self.extrema["type"]=="peak"]['price'], "x", color='limegreen', markersize=8)
+        plt.plot(self.extrema[self.extrema["type"]=="bottom"]['price'], "x", color='red', markersize=8)
         for item in cols:    
             try:
                 plt.plot(self.stock_data[item], 
@@ -379,9 +413,14 @@ class StockAnalyser():
             plt.plot(self.smoothen_price[self.smoothen_price>0], color='gold')
 
         if annot:
-            for date, extrema, percent in zip(self.extrema.index, self.extrema['price'], self.extrema['percentage change']):
+            for date, extrema, percent in zip(self.extrema[self.extrema["type"]=="peak"].index, self.extrema[self.extrema["type"]=="peak"]['price'], self.extrema[self.extrema["type"]=="peak"]['percentage change']):
                 plt.annotate("{:.2f}".format(extrema)
-                    + ", {:.2%}".format(percent), (date, extrema), fontsize=5)
+                    + ", {:.2%}".format(percent), (date, extrema+4), fontsize=6)
+                
+            for date, extrema, percent in zip(self.extrema[self.extrema["type"]=="bottom"].index, self.extrema[self.extrema["type"]=="bottom"]['price'], self.extrema[self.extrema["type"]=="bottom"]['percentage change']):
+                plt.annotate("{:.2f}".format(extrema)
+                    + ", {:.2%}".format(percent), (date, extrema-6), fontsize=6)
+                
         plt.legend()
         plt.grid(which='major', color='lavender')
         plt.grid(which='minor', color='lavender')
@@ -422,9 +461,9 @@ def runner(tickers: str, start: str, end: str,
         # no smooth
         if not smooth:
 
-            if ma_mode=='ma' or ma_mode=='dma':
+            if ma_mode=='ma' or ma_mode=='ema':
                 stock.set_extrema_left_window(data=f"{ma_mode}{ma_T}", interval=wind)
-            elif ma_mode =='ema':
+            elif ma_mode =='dma':
                 stock.set_extrema(data=f"{ma_mode}{ma_T}", interval=wind)
                 print("hi ema")
             else:
@@ -447,19 +486,36 @@ def runner_noma(tickers: str, start: str, end: str,smooth: bool=False, wind: int
    
     print("-- smoothen price --")
     print(tabulate(stock.get_smoothen_price(), headers='keys', tablefmt='psql'))
-    print("-- extrema --")
+    print(f"-- extrema, window={wind}--")
     print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql'))
 
     stock.plot_extrema(plt_title=f"{tickers}")
+
+def runner_polyfit(tickers: str, start: str, end: str,
+           smooth: bool=False, wind=10, smooth_ext=10,
+           ):
+    stock = StockAnalyser(tickers, start, end)
+    stock.set_smoothen_price_polyfit('Close')
+    stock.set_extrema(interval=wind)
+    stock.print_stock_data()
+    print("-- smoothen price --")
+    print(tabulate(stock.get_smoothen_price(), headers='keys', tablefmt='psql'))
+    print("-- extrema --")
+    print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql', floatfmt=(None,".2f", None,  ".2%")))
+    
+    stock.plot_extrema(plt_title=f"{tickers}", annot=True)
     
     
 if __name__ == "__main__":
-    runner('NVDA', '2022-10-20', '2023-07-22', ma_mode='ema', ma_T=5, smooth=False, wind=5, smooth_ext=0)
+    # runner('NVDA', '2022-10-20', '2023-07-22', ma_mode='ema', ma_T=10, smooth=False, wind=0, smooth_ext=0)
+    #runner_polyfit('NVDA', '2022-10-20', '2023-07-22',wind=10)
+    stock = StockAnalyser('NVDA', '2022-10-20', '2023-07-20')
 
-    # stock = StockAnalyser('NVDA', '2023-04-20', '2023-07-20')
+    stock.add_column_ma('ema', 10)
+    stock.set_extrema_left_window('ema10', 0)
+
     # stock_data = stock.get_close_price()
     # print(stock_data)
-
 
     # degree = 20
     # X = np.array(stock_data.reset_index().index)
