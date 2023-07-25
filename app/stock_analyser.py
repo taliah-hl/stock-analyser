@@ -157,7 +157,7 @@ class StockAnalyser():
         b_coeff, a_coeff = butter(order, normalized_cutoff, btype='low', analog=False)
         # b, a are coefficients in the formula
         # H(z) = (b0 + b1 * z^(-1) + b2 * z^(-2) + ... + bM * z^(-M)) / (1 + a1 * z^(-1) + a2 * z^(-2) + ... + aN * z^(-N))
-        self.stock_data[f'buttered {src_col}'] = filtfilt( b_coeff, a_coeff, self.stock_data[src_col])
+        self.stock_data[f'buttered {src_col} T={filter_period}'] = filtfilt( b_coeff, a_coeff, self.stock_data[src_col])
 
 
 
@@ -385,17 +385,15 @@ class StockAnalyser():
     def set_extrema(self, data: str='', interval: int=5, window_dir: str='left'):
         """
         set function of self.extrema, self.peak_indexes, self.bottom_indexes
-        - if data not provided, calulate base on self.smoothen_price 
-        - need to set self.smoothen_price first
+        - if data not specified, calulate base on self.smoothen_price 
         
         Parameter
         ---------
-        data: col name of to calculate extrema
-        interval: window to locate peak/bottom price on raw price by local extrema of smoothed price
+        data: col name of source to calculate extrema
+        interval: window to locate peak/bottom price on original price by source price
 
         """
 
-        interval_dir=window_dir
         if data=='':
             data_src = self.smoothen_price
         else:
@@ -412,26 +410,29 @@ class StockAnalyser():
             extrema_idx_lst.append((i, 1))  #1=peak
 
         extrema_idx_lst.sort()
-        
-        bottom_dates = []
-        bottom_close = []
         extrema_dates = []
         extrema_close=[]
         
         prev_idx = 0
-        for item in extrema_idx_lst:
-            
-            lower_boundary = max(0, prev_idx, item[0] - interval)
+
+        for i in range(0, len(extrema_idx_lst)):
+        
+            lower_boundary = max(0, extrema_idx_lst[i-1][0] if i>0 else 0, extrema_idx_lst[i][0]-interval)
             if window_dir=='left':
-                upper_boundary = min(item[0] + 1, len(self.stock_data['Close']))
-            else:
-                upper_boundary = min(item[0] + 1 + interval, len(self.stock_data['Close']))
+                upper_boundary = min(extrema_idx_lst[i][0] + 1,
+                                     extrema_idx_lst[i+1][0] if i<len(extrema_idx_lst)-1 else extrema_idx_lst[i][0] + 1, 
+                                     len(self.stock_data['Close']))
+
+            else :
+                upper_boundary = min(extrema_idx_lst[i][0] + 1 +interval,
+                                     extrema_idx_lst[i+1][0] if i<len(extrema_idx_lst)-1 else extrema_idx_lst[i][0] + 1, 
+                                     len(self.stock_data['Close']))
             stock_data_in_interval = self.stock_data['Close'].iloc[list(range(lower_boundary, upper_boundary))]
             
-            extrema_dates.append(stock_data_in_interval.idxmax() if item[1] else stock_data_in_interval.idxmin())
-            extrema_close.append((stock_data_in_interval.max(),'peak') if item[1] else (stock_data_in_interval.min(), 'bottom'))
+            extrema_dates.append(stock_data_in_interval.idxmax() if extrema_idx_lst[i][1] else stock_data_in_interval.idxmin())
+            extrema_close.append((stock_data_in_interval.max(),'peak') if extrema_idx_lst[i][1] else (stock_data_in_interval.min(), 'bottom'))
 
-            prev_idx = item[0]
+
         self.extrema = pd.DataFrame(extrema_close, columns=['price', 'type'], index=extrema_dates)
         
         self.extrema = self.extrema[~self.extrema.index.duplicated()]
@@ -465,13 +466,13 @@ class StockAnalyser():
         cols: col names to plot | text_box: string in text box to print
 
          """
-        plt.figure(figsize=(28, 10), dpi=100)
+        plt.figure(figsize=(24, 8), dpi=120)
         plt.plot(self.stock_data['Close'], label='close price', color='midnightblue', alpha=0.9)
         for item in cols:    
             try:
                 plt.plot(self.stock_data[item], 
                     label=item if isinstance(item, str) else '',
-                    alpha=0.8)
+                    alpha=0.8, linewidth=1.5)
             except:
                 print(f"column {item} does not exist")
         if self.smoothen_price is not None:
@@ -508,6 +509,11 @@ class StockAnalyser():
                 plt.text(0.9, 1.06, 'drop from last high: '+'{:.2%}'.format(perc), fontsize=6,  ha='left', va='top',  transform=plt.gca().transAxes)
 
 
+        ### --- cutom plot here  --- ###
+
+        plt.plot(self.stock_data['buttered Close T=20'], alpha=0.8, linewidth=1.5, label='buttered Close T=20', color='cyan')
+        #plt.plot(self.stock_data['buttered Close T=60'], alpha=0.8, linewidth=1.5, label='buttered Close T=60', color='magenta')
+
         # plot on relative position of graph regardless of value of x/y axis
         plt.legend()
         plt.grid(which='major', color='lavender')
@@ -517,7 +523,8 @@ class StockAnalyser():
         plt.show()
 
 def runner(tickers: str, start: str, end: str, 
-           ma_mode: str='', ma_T: int=0, 
+           filter_mode: str='',
+           ma_mode: str='', T: int=0, 
            smooth: bool=False, wind=10, smooth_ext=10,
            all_vert =False):
     
@@ -528,19 +535,19 @@ def runner(tickers: str, start: str, end: str,
         stock.set_all_local_extrema()
 
     else:
-        if ma_mode !='' and ma_T !=0:
-            stock.add_column_ma(ma_mode, ma_T)
-            stock.add_col_slope(f"{ma_mode}{ma_T}")
-            extra_col=[f"{ma_mode}{ma_T}"]
+        if ma_mode !='' and T !=0:
+            stock.add_column_ma(ma_mode, T)
+            stock.add_col_slope(f"{ma_mode}{T}")
+            extra_col=[f"{ma_mode}{T}"]
 
         # smooth
         if smooth:
             if (ma_mode =='ma' or ma_mode=='ema') :
-                stock.set_smoothen_price_blackman(f"{ma_mode}{ma_T}", N=smooth_ext)
+                stock.set_smoothen_price_blackman(f"{ma_mode}{T}", N=smooth_ext)
                 stock.set_extrema(interval=wind)
                     
             elif ma_mode =='dma':
-                stock.set_smoothen_price_blackman(f"{ma_mode}{ma_T}", N=smooth_ext)
+                stock.set_smoothen_price_blackman(f"{ma_mode}{T}", N=smooth_ext)
                 stock.set_extrema(interval=wind, window_dir='both')
             else:
                 stock.set_smoothen_price_blackman('Close', N=smooth_ext)
@@ -551,9 +558,9 @@ def runner(tickers: str, start: str, end: str,
         if not smooth:
 
             if ma_mode=='ma' or ma_mode=='ema':
-                stock.set_extrema(data=f"{ma_mode}{ma_T}", interval=wind)
+                stock.set_extrema(data=f"{ma_mode}{T}", interval=wind)
             elif ma_mode =='dma':
-                stock.set_extrema(data=f"{ma_mode}{ma_T}", interval=wind, window_dir='both')
+                stock.set_extrema(data=f"{ma_mode}{T}", interval=wind, window_dir='both')
                 print("hi ema")
             else:
                 stock.set_extrema('Close', interval=wind)
@@ -564,7 +571,7 @@ def runner(tickers: str, start: str, end: str,
     print("-- extrema --")
     print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql', floatfmt=(None,".2f", None,  ".2%")))
     
-    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {ma_mode}{ma_T}", annot=True, text_box=f"{tickers}, {start} - {end}, window={wind}")
+    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {ma_mode}{T}", annot=True, text_box=f"{tickers}, {start} - {end}, window={wind}")
 
 def runner_noma(tickers: str, start: str, end: str,smooth: bool=False, wind: int=10, smooth_ext: int=10):
     stock = StockAnalyser(tickers, start, end)
@@ -596,13 +603,15 @@ def runner_polyfit(tickers: str, start: str, end: str,
     
     
 if __name__ == "__main__":
-    #runner('TSLA', '2022-04-20', '2023-07-22', ma_mode='ema', ma_T=10, smooth=False, wind=5, smooth_ext=0)
+    #runner('TSLA', '2022-04-20', '2023-07-22', ma_mode='ema', T=10, smooth=False, wind=5, smooth_ext=0)
     #runner_polyfit('NVDA', '2022-10-20', '2023-07-22',wind=10)
-    stock=StockAnalyser('TSLA', '2022-04-20', '2023-07-22')
-    stock.add_column_ma('ema', 20)
-    stock.butter(10)
+    stock=StockAnalyser('NVDA', '2022-10-20', '2023-07-22')
+    
+    #stock.butter(10)
+    stock.butter(20)
+    stock.set_extrema('buttered Close T=20', window_dir='both')
 
-    stock.plot_extrema(cols=['buttered Close', 'ema20'])
+    stock.plot_extrema()
     
     stock.print_stock_data()
 
