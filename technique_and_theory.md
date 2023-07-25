@@ -94,6 +94,21 @@ window = np.blackman(N)
 smoothed_data = np.convolve(window / window.sum(), original_data, mode='same')
 
 ```
+### 2.3 Butterworth Low Pass Filter
+
+ref: https://nehajirafe.medium.com/using-fft-to-analyse-and-cleanse-time-series-data-d0c793bb82e3
+
+- to filter away noise of frequency < certain threshold
+
+transfer function of the Butterworth low-pass filter:
+
+H(z) = (b0 + b1 * z^(-1) + b2 * z^(-2) + ... + bM * z^(-M)) / (1 + a1 * z^(-1) + a2 * z^(-2) + ... + aN * z^(-N))
+
+`scipy.signal.butter` -> find coefficients **a**s and **b**s
+
+`scipy.signal.filtfilt` -> zero-phase filtering is performed to remove the high-frequency noise components from the input data
+
+(expensive function)
 
 ## 3. Volitility
 
