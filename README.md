@@ -1,15 +1,51 @@
 
-
 # Stock
 
-# 21 Jul Update
+## 2023 Version
 
-run **app/stock_analyser.py** or **runner.ipynb** to try
-main class: app/stock_analyser.py
 
-- Find peaks and bottoms
-- Find trend
+main class: `StockAnalyser` in app/stock_analyser.py
 
+## Goal
+
+- to draw bowls on historical stock price in different time frame
+
+## How to use
+
+go to app/stock_analyser.py
+
+```
+if __name__ == "__main__":
+
+    ## Here to try the class
+    runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
+
+    ## -- Example -- ##
+    ## E.g. Plot PDD 2022-10-20 to 2023-07-22, get extrema with EMA5
+    # runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
+
+    ## E.g. Plot NVDA 2022-10-20 to 2023-07-22, get extrema with EMA10
+    # runner('NVDA', '2022-10-20', '2023-07-22', method='ema', T=10)
+
+    ## E.g. Plot TSLA 2023-02-20 to 2023-07-22, get extrema with butterworth low pass filter with period=10 day
+    # runner('TSLA', '2023-02-20', '2023-07-22', method='butter', T=10)
+
+```
+
+## Example Result
+
+- see `result.pdf`
+
+## Techniques Assessed
+
+- Moving Averages (MA, EMA, DMA)
+- Butterworth Low Pass Filter
+- polyfit
+- linear convolution with np.blackman
+
+detail discussion of pros and cons of different techniques see `technique_and_theory.md`
+
+## 2021 Version
 ---
 
 - [Stock](#stock)
