@@ -467,7 +467,7 @@ class StockAnalyser():
 
 
 
-    def plot_extrema(self, cols: list=[], plt_title: str='Extrema', annot: bool=True, text_box: str='') :
+    def plot_extrema(self, cols: list=[], plt_title: str='Extrema', annot: bool=True, text_box: str='', annotfont: float=6) :
 
         """
         default plot function, plot closing price of self.stock_data, self.smoothen_price and self.extrema
@@ -502,12 +502,13 @@ class StockAnalyser():
                     if self.extrema['type'][i]=='peak':
                         y_offset= 1
                         plt.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]),
-                                (self.extrema.index[i], self.extrema['price'][i]+y_offset), fontsize=7, ha='left', va='bottom' )
+                                (self.extrema.index[i], self.extrema['price'][i]+y_offset), fontsize=annotfont, ha='left', va='bottom' )
                     if self.extrema['type'][i]=='bottom':
                         y_offset= -2
+                        pbday = ", %d bar"%(self.extrema['peak-to-bottom day'][i]) if self.extrema['peak-to-bottom day'][i]>0 else ''
                         plt.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]) 
-                                 + ", %d bar"%(self.extrema['peak-to-bottom day'][i]),
-                                (self.extrema.index[i], self.extrema['price'][i]+y_offset), fontsize=7, ha='left', va='bottom' )
+                                 +pbday,
+                                (self.extrema.index[i], self.extrema['price'][i]+y_offset), fontsize=annotfont, ha='left', va='bottom' )
 
                 
         
@@ -613,7 +614,7 @@ def runner(tickers: str, start: str, end: str,
     print("-- Extrema --")
     print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql', floatfmt=(None,".2f", None,  ".2%")))
 
-    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, text_box=f"{tickers}, {start} - {end}, window={wind}")
+    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, text_box=f"{tickers}, {start} - {end}, window={wind}", annotfont=7)
 
 
 def runner_polyfit(tickers: str, start: str, end: str,
@@ -632,7 +633,7 @@ def runner_polyfit(tickers: str, start: str, end: str,
 if __name__ == "__main__":
 
     ## Here to try the class
-    runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
+    runner('NVDA', '2023-01-20', '2023-07-22', method='ema', T=5, wind=5)
 
     ## -- Example -- ##
     ## E.g. Plot PDD 2022-10-20 to 2023-07-22, get extrema with EMA5
