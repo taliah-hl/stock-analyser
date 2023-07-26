@@ -451,12 +451,21 @@ class StockAnalyser():
         self.extrema['percentage change'] = percentage_change_lst
 
         # calculate peak-to-bottom-time
+        self.extrema['peak-to-bottom day'] = np.nan
+        self.extrema['back to peak time'] = np.nan
+
         for i in range(0, len(self.extrema)):
-            if self.extrema['type'][i] =='peak':
-                if i+1 < len(self.extrema):
-                    #assert self.extrema['type'][i+1]=='bottom'
-                    pass
-                    # TO DO 
+            if self.extrema['type'][i] =='bottom' and i>0:
+                try:
+                    assert self.extrema['type'][i-1]=='peak'
+                except AssertionError:
+                    print("peak bottom does not appear alternatively, possible wrong setting")
+                self.extrema['peak-to-bottom day'][i] = int((self.extrema.index[i] - self.extrema.index[i-1]).days)
+        
+        print('type of time:' , type(self.extrema['peak-to-bottom day'][1]))
+        print('type of date:' , type(self.extrema.index[1]))
+
+
 
     def plot_extrema(self, cols: list=[], plt_title: str='Extrema', annot: bool=True, text_box: str='') :
 
@@ -468,8 +477,9 @@ class StockAnalyser():
         cols: col names to plot | text_box: string in text box to print
 
          """
-        plt.figure(figsize=(24, 8), dpi=120)
-        plt.plot(self.stock_data['Close'], label='close price', color='midnightblue', alpha=0.9)
+         
+        plt.figure(figsize=(24, 10), dpi=100)
+        plt.plot(self.stock_data['Close'], label='close price', color='royalblue', alpha=0.9)
 
         color_list=['violet', 'cyan', 'tomato', 'peru', 'green', 'olive', 'tan', 'darkred']
 
@@ -486,31 +496,36 @@ class StockAnalyser():
             plt.plot(self.extrema[self.extrema["type"]=="peak"]['price'], "x", color='limegreen', markersize=8)
             plt.plot(self.extrema[self.extrema["type"]=="bottom"]['price'], "x", color='red', markersize=8)
         
-
+            ## Annotation ##
             if annot:
-                for date, extrema, percent in zip(self.extrema[self.extrema["type"]=="peak"].index, self.extrema[self.extrema["type"]=="peak"]['price'], self.extrema[self.extrema["type"]=="peak"]['percentage change']):
-                    plt.annotate("{:.2f}".format(extrema)
-                        + ", {:.2%}".format(percent), (date, extrema+4), fontsize=5)
-                    
-                for date, extrema, percent in zip(self.extrema[self.extrema["type"]=="bottom"].index, self.extrema[self.extrema["type"]=="bottom"]['price'], self.extrema[self.extrema["type"]=="bottom"]['percentage change']):
-                    plt.annotate("{:.2f}".format(extrema)
-                        + ", {:.2%}".format(percent), (date, extrema-6), fontsize=5)
+                for i in range(0, len(self.extrema)):
+                    if self.extrema['type'][i]=='peak':
+                        y_offset= 1
+                        plt.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]),
+                                (self.extrema.index[i], self.extrema['price'][i]+y_offset), fontsize=7, ha='left', va='bottom' )
+                    if self.extrema['type'][i]=='bottom':
+                        y_offset= -2
+                        plt.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]) 
+                                 + ", %d bar"%(self.extrema['peak-to-bottom day'][i]),
+                                (self.extrema.index[i], self.extrema['price'][i]+y_offset), fontsize=7, ha='left', va='bottom' )
+
                 
         
+            ## Textbox on left-top corner ##
+            # textbox is plot on relative position of graph regardless of value of x/y axis
+            plt.text(0.01, 1,  text_box, fontsize=8, color='saddlebrown', ha='left', va='bottom',  transform=plt.gca().transAxes) 
 
-            plt.text(0.01, 1,  text_box, fontsize=7, color='saddlebrown', ha='left', va='bottom',  transform=plt.gca().transAxes) 
-
+            ## Textbox of drop from last high ##
             if self.peak_indexes is not None:
                 #percentage change from last peak
 
                 maxval = self.stock_data['Close'].iloc[list(range(self.peak_indexes[-1]-1, len(self.stock_data)))].max()
                 print("maxval: ", maxval)
                 print("cur price: ", self.stock_data['Close'].iloc[-1])
-                perc = ( self.stock_data['Close'].iloc[-1] - maxval)/maxval
-
-                plt.text(0.9, 1.1, "lastest high: "+"{:.2f}".format(maxval), fontsize=6,  ha='left', va='top',  transform=plt.gca().transAxes)
-                plt.text(0.9, 1.08, "current:  "+"{:.2f}".format(self.stock_data['Close'].iloc[-1]), fontsize=6,  ha='left', va='top',  transform=plt.gca().transAxes)
-                plt.text(0.9, 1.06, 'drop from last high: '+'{:.2%}'.format(perc), fontsize=6,  ha='left', va='top',  transform=plt.gca().transAxes)
+                perc = ( self.stock_data['Close'].iloc[-1] - maxval)/maxval              
+                plt.text(0.9, 1.1, "lastest high: "+"{:.2f}".format(maxval), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
+                plt.text(0.9, 1.08, "current:  "+"{:.2f}".format(self.stock_data['Close'].iloc[-1]), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
+                plt.text(0.9, 1.06, 'drop from last high: '+'{:.2%}'.format(perc), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
 
 
         ### --- cutom plot here  --- ###
@@ -518,7 +533,7 @@ class StockAnalyser():
         #plt.plot(self.stock_data['buttered Close T=20'], alpha=0.8, linewidth=1.5, label='buttered Close T=20', color='cyan')
         #plt.plot(self.stock_data['buttered Close T=60'], alpha=0.8, linewidth=1.5, label='buttered Close T=60', color='magenta')
 
-        # plot on relative position of graph regardless of value of x/y axis
+        
         plt.legend()
         plt.grid(which='major', color='lavender')
         plt.grid(which='minor', color='lavender')
@@ -597,7 +612,7 @@ def runner(tickers: str, start: str, end: str,
 
     print("-- Extrema --")
     print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql', floatfmt=(None,".2f", None,  ".2%")))
-    
+
     stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, text_box=f"{tickers}, {start} - {end}, window={wind}")
 
 
@@ -617,7 +632,7 @@ def runner_polyfit(tickers: str, start: str, end: str,
 if __name__ == "__main__":
 
     ## Here to try the class
-    # runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
+    runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
 
     ## -- Example -- ##
     ## E.g. Plot PDD 2022-10-20 to 2023-07-22, get extrema with EMA5
@@ -627,7 +642,7 @@ if __name__ == "__main__":
     # runner('NVDA', '2022-10-20', '2023-07-22', method='ema', T=10)
 
     ## E.g. Plot TSLA 2023-02-20 to 2023-07-22, get extrema with butterworth low pass filter with period=10 day
-    runner('TSLA', '2023-02-20', '2023-07-22', method='butter', T=10)
+    # runner('TSLA', '2023-02-20', '2023-07-22', method='butter', T=10)
 
 
 
