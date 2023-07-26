@@ -104,7 +104,7 @@ class StockAnalyser():
         elif(mode=='ema'):
             self.stock_data[f'ema{period}'] = self.stock_data['Close'].ewm(span=period, adjust=False).mean()
         else:
-            print("ma mode not given or wrong!")
+            raise Exception("ma mode not given or wrong!")
         return
 
     def add_column_lwma(self,  mode: str='ma', period: int=9)->None:
@@ -184,13 +184,11 @@ class StockAnalyser():
         self.smoothen_price = pd.DataFrame(smoothed_data_chop, index=self.stock_data.index[1:-1], columns=["Data"])
 
     
-    def set_smoothen_price_polyfit(self, col_name: str)->None: #not work to smooth ma
-        # potentially due to NaN value
-        
+    def set_smoothen_price_polyfit(self, col_name: str)->None:         
         """
         smoothen ['col_name'] of self.stock_data by polyfit (mutating)
+        not work to smooth ma potentially due to NaN value
         - set fcuntion of self.smoothen_price
-        - no return
 
         Parameter
         -----
@@ -256,6 +254,8 @@ class StockAnalyser():
     
     def get_local_maxima(self, original_price_data: pd.DataFrame, smoothed_price_data: pd.DataFrame, interval: int=5) -> pd.DataFrame:
         """
+        NOT MAINTAINED ANYMORE
+
         Return table of local maximum price
         columns of table:
         - date, price: raw price, type: 'peak'
@@ -287,6 +287,8 @@ class StockAnalyser():
     
     def get_local_minima(self,original_close_data: pd.DataFrame, smoothed_price_data: pd.DataFrame, interval: int=5) -> pd.DataFrame:
         """
+        NOT MAINTAINED ANYMORE
+
         Return table of local minium price
         columns of table:
         - date, price: raw price, type:'bottom'
@@ -468,13 +470,15 @@ class StockAnalyser():
          """
         plt.figure(figsize=(24, 8), dpi=120)
         plt.plot(self.stock_data['Close'], label='close price', color='midnightblue', alpha=0.9)
-        for item in cols:    
-            try:
-                plt.plot(self.stock_data[item], 
-                    label=item if isinstance(item, str) else '',
-                    alpha=0.8, linewidth=1.5)
-            except:
-                print(f"column {item} does not exist")
+
+        color_list=['violet', 'cyan', 'tomato', 'peru', 'green', 'olive', 'tan', 'darkred']
+
+        for i in range(0, len(cols)):    
+            
+            plt.plot(self.stock_data[cols[i]], 
+                    label=cols[i] if isinstance(cols[i], str) else '',
+                    alpha=0.8, linewidth=1.5, color=color_list[i])
+            
         if self.smoothen_price is not None:
             plt.plot(self.smoothen_price[self.smoothen_price>0], color='gold')
 
@@ -511,7 +515,7 @@ class StockAnalyser():
 
         ### --- cutom plot here  --- ###
 
-        plt.plot(self.stock_data['buttered Close T=20'], alpha=0.8, linewidth=1.5, label='buttered Close T=20', color='cyan')
+        #plt.plot(self.stock_data['buttered Close T=20'], alpha=0.8, linewidth=1.5, label='buttered Close T=20', color='cyan')
         #plt.plot(self.stock_data['buttered Close T=60'], alpha=0.8, linewidth=1.5, label='buttered Close T=60', color='magenta')
 
         # plot on relative position of graph regardless of value of x/y axis
@@ -523,69 +527,79 @@ class StockAnalyser():
         plt.show()
 
 def runner(tickers: str, start: str, end: str, 
-           filter_mode: str='',
-           ma_mode: str='', T: int=0, 
-           smooth: bool=False, wind=10, smooth_ext=10,
-           all_vert =False):
+           method: str='', T: int=0, 
+            wind=10, smooth_ext=10,
+           all_vertex =False):
+    """
+    Parameter
+
+    - method: options: 'ma', 'ema', 'dma', 'butter' |
+    - T: day range of taking ma/butterworth low pass filter |
+    - all_vertex: get all vertex from orginal stock price |
+    - wind: window to locate extrema from approx. price
+    """
     
     stock = StockAnalyser(tickers, start, end)
     extra_col =[]
+    smooth=False
 
-    if all_vert:
+    ## Parameter Checking
+
+    if T<1:
+        raise Exception("T must >=1")
+
+    if all_vertex:
         stock.set_all_local_extrema()
 
     else:
-        if ma_mode !='' and T !=0:
-            stock.add_column_ma(ma_mode, T)
-            stock.add_col_slope(f"{ma_mode}{T}")
-            extra_col=[f"{ma_mode}{T}"]
+        if method =='ma' or method =='ema' or  method =='dma':
+            stock.add_column_ma(method, T)
+            stock.add_col_slope(f"{method}{T}")
+            extra_col=[f"{method}{T}"]
 
-        # smooth
-        if smooth:
-            if (ma_mode =='ma' or ma_mode=='ema') :
-                stock.set_smoothen_price_blackman(f"{ma_mode}{T}", N=smooth_ext)
-                stock.set_extrema(interval=wind)
-                    
-            elif ma_mode =='dma':
-                stock.set_smoothen_price_blackman(f"{ma_mode}{T}", N=smooth_ext)
-                stock.set_extrema(interval=wind, window_dir='both')
-            else:
-                stock.set_smoothen_price_blackman('Close', N=smooth_ext)
-                stock.set_extrema(interval=wind)
+            # smooth
+            if smooth:
+                if (method =='ma' or method=='ema') :
+                    stock.set_smoothen_price_blackman(f"{method}{T}", N=smooth_ext)
+                    stock.set_extrema(interval=wind)
+                        
+                elif method =='dma':
+                    stock.set_smoothen_price_blackman(f"{method}{T}", N=smooth_ext)
+                    stock.set_extrema(interval=wind, window_dir='both')
+                else:
+                    stock.set_smoothen_price_blackman('Close', N=smooth_ext)
+                    stock.set_extrema(interval=wind)
 
 
-        # no smooth
-        if not smooth:
+            # no smooth
+            if not smooth:
 
-            if ma_mode=='ma' or ma_mode=='ema':
-                stock.set_extrema(data=f"{ma_mode}{T}", interval=wind)
-            elif ma_mode =='dma':
-                stock.set_extrema(data=f"{ma_mode}{T}", interval=wind, window_dir='both')
-                print("hi ema")
-            else:
-                stock.set_extrema('Close', interval=wind)
+                if method=='ma' or method=='ema':
+                    stock.set_extrema(data=f"{method}{T}", interval=wind)
+                elif method =='dma':
+                    stock.set_extrema(data=f"{method}{T}", interval=wind, window_dir='both')
+                    print("hi ema")
+                else:
+                    stock.set_extrema('Close', interval=wind)
 
+        elif method =='butter':
+            
+            stock.butter(T)
+            stock.set_extrema(f'buttered Close T={T}', window_dir='both')
+            extra_col=[f'buttered Close T={T}']
+        else:
+            raise Exception("invalid method")
+        
+
+
+    print("-- Stock Data --")
     stock.print_stock_data()
-    print("-- smoothen price --")
-    print(tabulate(stock.get_smoothen_price(), headers='keys', tablefmt='psql'))
-    print("-- extrema --")
+
+    print("-- Extrema --")
     print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql', floatfmt=(None,".2f", None,  ".2%")))
     
-    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {ma_mode}{T}", annot=True, text_box=f"{tickers}, {start} - {end}, window={wind}")
+    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, text_box=f"{tickers}, {start} - {end}, window={wind}")
 
-def runner_noma(tickers: str, start: str, end: str,smooth: bool=False, wind: int=10, smooth_ext: int=10):
-    stock = StockAnalyser(tickers, start, end)
-    #stock.add_column_ma(ma_mode, ma_T)
-   
-    stock.set_smoothen_price_blackman('Close')
-    stock.set_extrema(interval=wind)
-   
-    print("-- smoothen price --")
-    print(tabulate(stock.get_smoothen_price(), headers='keys', tablefmt='psql'))
-    print(f"-- extrema, window={wind}--")
-    print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql'))
-
-    stock.plot_extrema(plt_title=f"{tickers}")
 
 def runner_polyfit(tickers: str, start: str, end: str,
            smooth: bool=False, wind=10, smooth_ext=10,
@@ -593,44 +607,43 @@ def runner_polyfit(tickers: str, start: str, end: str,
     stock = StockAnalyser(tickers, start, end)
     stock.set_smoothen_price_polyfit('Close')
     stock.set_extrema(interval=wind)
+    print("-- Stock Data --")
     stock.print_stock_data()
-    print("-- smoothen price --")
-    print(tabulate(stock.get_smoothen_price(), headers='keys', tablefmt='psql'))
-    print("-- extrema --")
+    print("-- Extrema --")
     print(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql', floatfmt=(None,".2f", None,  ".2%")))
-    
     stock.plot_extrema(plt_title=f"{tickers}", annot=True)
     
     
 if __name__ == "__main__":
-    #runner('TSLA', '2022-04-20', '2023-07-22', ma_mode='ema', T=10, smooth=False, wind=5, smooth_ext=0)
+
+    ## Here to try the class
+    # runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
+
+    ## -- Example -- ##
+    ## E.g. Plot PDD 2022-10-20 to 2023-07-22, get extrema with EMA5
+    # runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
+
+    ## E.g. Plot NVDA 2022-10-20 to 2023-07-22, get extrema with EMA10
+    # runner('NVDA', '2022-10-20', '2023-07-22', method='ema', T=10)
+
+    ## E.g. Plot TSLA 2023-02-20 to 2023-07-22, get extrema with butterworth low pass filter with period=10 day
+    runner('TSLA', '2023-02-20', '2023-07-22', method='butter', T=10)
+
+
+
+    ####　### ####
     #runner_polyfit('NVDA', '2022-10-20', '2023-07-22',wind=10)
-    stock=StockAnalyser('NVDA', '2022-10-20', '2023-07-22')
+    # stock=StockAnalyser('TSLA', '2023-01-20', '2023-07-22')
     
-    #stock.butter(10)
-    stock.butter(20)
-    stock.set_extrema('buttered Close T=20', window_dir='both')
+    # #stock.butter(10)
+    # stock.butter(10)
+    # stock.set_extrema('buttered Close T=10', window_dir='both')
 
-    stock.plot_extrema()
+    # stock.plot_extrema(plt_title='TSLA 2023-01-20 to 2023-07-22: extrema with butter T=10')
     
-    stock.print_stock_data()
+    # stock.print_stock_data()
 
-    # stock.set_extrema_left_window('ema10', 0)
-
-    # stock_data = stock.get_close_price()
-    # print(stock_data)
-
-    # degree = 20
-    # X = np.array(stock_data.reset_index().index)
-    # Y =stock_data['Close'].to_numpy()
-
-    # with warnings.catch_warnings():
-    #     warnings.simplefilter("ignore", np.RankWarning)
-    #     poly_fit = np.poly1d(np.polyfit(X, Y, degree))
-
-    # smoothen_price = pd.DataFrame(poly_fit(X), columns=["Data"], index=stock_data.index)
-    
-    # stock.plot_extrema(plt_title='TSLA')
+ 
 
 
 
