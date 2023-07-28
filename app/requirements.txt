@@ -1,8 +1,8 @@
 loguru
-typing
 numpy
 pandas
 scipy
 matplotlib
 yfinance
 tabulate
+zigzag #if cannot install on windows, recommend using WSL
