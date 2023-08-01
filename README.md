@@ -1,4 +1,3 @@
-
 # Stock
 
 ## 2023 Version
@@ -16,9 +15,9 @@ main class: `StockAnalyser` in app/stock_analyser.py
 
 For all points during uptrend (not include starting point):
 
-peak-to-bottom drop less than previous peak-to-bottom drop
+1. peak-to-bottom drop less than previous peak-to-bottom drop
 
-Price rise above previous peak before next bottom
+2. Price rise above previous peak before next bottom
 
 3. cur price rise above prev big bottom * 1+ zigzag threshold (up trend already detected on that day)
 
@@ -32,7 +31,7 @@ Config:
 
 ## How to use
 
-go to app/stock_analyser.py
+go to app/stock_analyser.py 
 
 ```
 if __name__ == "__main__":
