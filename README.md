@@ -10,6 +10,26 @@ main class: `StockAnalyser` in app/stock_analyser.py
 
 - to draw bowls on historical stock price in different time frame
 
+## Setting
+
+**break point condition set 1**
+
+For all points during uptrend (not include starting point):
+
+peak-to-bottom drop less than previous peak-to-bottom drop
+
+Price rise above previous peak before next bottom
+
+3. cur price rise above prev big bottom * 1+ zigzag threshold (up trend already detected on that day)
+
+Config:
+
+- Smooth by ema5
+
+- Trend found by zigzag 9%
+
+
+
 ## How to use
 
 go to app/stock_analyser.py
