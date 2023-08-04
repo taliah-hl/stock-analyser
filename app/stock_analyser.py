@@ -23,12 +23,13 @@ class StockAnalyser():
     UPTRD =1
     DOWNTRD =-1
 
-    def __init__(self, tickers: str, start: str, end: str):
-        # Load stock info
-        
-        stock_info = yf.download(tickers, start=start, end=end)
-        self.stock_data = pd.DataFrame(stock_info["Close"])
-        self.data_len = len(self.stock_data)
+
+    def __init__(self):
+
+        self.tickers= None
+        self.start_date = None
+        self.end_date = None
+        self.stock_data = None
         self.smooth_data_N = 10
         self.find_extrema_interval = 5
         self.peaks = None
@@ -38,7 +39,19 @@ class StockAnalyser():
         self.all_vertex= None
         self.peak_indexes=[]
         self.bottom_indexes=[]
-        self.ticker_name=tickers
+
+
+    def download(self, tickers: str, start: str, end: str):
+        # Load stock info
+        
+        stock_info = yf.download(tickers, start=start, end=end)
+        self.tickers=tickers
+        self.start_date = start
+        self.end_date = end
+        self.stock_data = pd.DataFrame(stock_info["Close"])
+        self.data_len = len(self.stock_data)
+       
+
 
         ## CONSTANT ##
         # PEAK =1 | BOTTOM =-1  | UPTREND =1 | DOWNTREND =-1
@@ -104,68 +117,77 @@ class StockAnalyser():
         """
         return pd.DataFrame(self.extrema)
     
-    def add_column_ma(self,  mode: str='ma', period: int=9)->None:
+    def add_column_ma(self,  src_data: pd.Series, mode: str='ma', period: int=9)->pd.Series:
         """
         add a column of moving average (MA) to stock_data
-        
+        return: ma
         Parameter
         -----
-        - stock_data: DataFrame with column named['Close'] which is closing price of each day
+        - src_data: pd.Serise of source stock price to cal ma
         - period: time period (day)
         - mode options: moving average:'ma', exponential moving average:'ema', displaced moving average:'dma'
-        - price_col_name: name of column of original stock price
+        - 
         """
         DMA_DISPLACEMEN = math.floor(period/2)*(-1)
 
         if(mode =='ma'):
-            self.stock_data[f'ma{period}'] = self.stock_data['Close'].rolling(period).mean()
+            self.stock_data[f'ma{period}'] = src_data.rolling(period).mean()
             self.stock_data[f'ma{period}'].dropna(inplace=True)
+            return self.stock_data[f'ma{period}']
             
         elif mode =='dma':
-            ma = self.stock_data['Close'].rolling(period).mean()
+            ma = src_data.rolling(period).mean()
             ma.dropna(inplace=True)
             self.stock_data[f"dma{period}"] = ma.shift(DMA_DISPLACEMEN)
+            return self.stock_data[f"dma{period}"]
 
         elif(mode=='ema'):
-            self.stock_data[f'ema{period}'] = self.stock_data['Close'].ewm(span=period, adjust=False).mean()
+            self.stock_data[f'ema{period}'] = src_data.ewm(span=period, adjust=False).mean()
+            return self.stock_data[f"ema{period}"]
         else:
             raise Exception("ma mode not given or wrong!")
-        return
+            return
 
-    def add_column_lwma(self,  mode: str='ma', period: int=9)->None:
+    def add_column_lwma(self, src_data: pd.Series, mode: str='ma', period: int=9)->pd.Series:
         """
         Result not good
         
         """
         DMA_DISPLACEMEN = math.floor(period/4)*(-1)
         weights = np.arange(1, period + 1)
-        lwma = self.stock_data['Close'].rolling(window=period).apply(lambda x: (x * weights).sum() / weights.sum(), raw=True)
+        lwma = src_data.rolling(window=period).apply(lambda x: (x * weights).sum() / weights.sum(), raw=True)
         lwma.dropna(inplace=True)
         self.stock_data[f"lwma{period}"] = lwma.shift(DMA_DISPLACEMEN)
-        return
+        return self.stock_data[f"lwma{period}"]
         
     
-    def add_col_slope(self, col_name: str)->None:
+    def cal_slope(self, src_data)->pd.Series:
         """
-        calculate slope of segment of given col name
+        calculate slope of segment of given pd.Serise
+        - src_data: source of data to calculate slope pd.Serise
+
         """
         slope_lst=[np.nan]
-        for i in range(1, len(self.stock_data[col_name])):
-            if(self.stock_data[col_name][i-1]==0 or self.stock_data[col_name][i]==0):
+        for i in range(1, len(src_data)):
+            if(src_data[i-1]==0 or src_data[i]==0):
                 slope_lst.append(np.nan)
             else:
-                slope_lst.append(self.stock_data[col_name][i] - self.stock_data[col_name][i-1])
-        self.stock_data[f'slope {col_name}'] = slope_lst
+                slope_lst.append(src_data[i] - src_data[i-1])
+        self.stock_data[f'slope {src_data.name}'] = slope_lst
+        return self.stock_data[f'slope {src_data.name}']
 
-    def add_col_macd(self):
+    def add_col_macd_group(self, src_data: pd.Series):
         """"
-        add column of macd
+        add column of ema12, ema26, macd, signal line and slope of macd
+        no return
         """
-        self.add_column_ma('ema', 12)
-        self.add_column_ma('ema', 26)
+        self.add_column_ma(src_data, 'ema', 12)
+        self.add_column_ma(src_data,'ema', 26)
         self.stock_data['MACD']=self.stock_data['ema12'] - self.stock_data['ema26']
         self.stock_data['signal'] = self.stock_data['MACD'].ewm(span=9, adjust=False).mean()
-        self.add_col_slope('MACD')
+        self.add_col_slope(self.stock_data['MACD'])
+
+    
 
     
     def get_col(self, col_name: str)->pd.Series:
@@ -174,7 +196,7 @@ class StockAnalyser():
         """
         return self.stock_data[col_name]
 
-    def butter(self, filter_period: int, src_col: str='Close')->None:
+    def set_butter(self, filter_period: int, src_data: pd.Series)->pd.Series:
         """
         filter frequency smaller than filter_period by Butterworth Low Pass Filter
         result is put into self.stock_data['buttered {src_col}']
@@ -192,19 +214,14 @@ class StockAnalyser():
         b_coeff, a_coeff = butter(order, normalized_cutoff, btype='low', analog=False)
         # b, a are coefficients in the formula
         # H(z) = (b0 + b1 * z^(-1) + b2 * z^(-2) + ... + bM * z^(-M)) / (1 + a1 * z^(-1) + a2 * z^(-2) + ... + aN * z^(-N))
-        self.stock_data[f'buttered {src_col} T={filter_period}'] = filtfilt( b_coeff, a_coeff, self.stock_data[src_col])
+        self.stock_data[f'buttered {src_data.name} T={filter_period}'] = filtfilt( b_coeff, a_coeff, src_data)
+        return self.stock_data[f'buttered {src_data.name} T={filter_period}']
 
 
-
-    def get_smoothen_price(self)-> pd.DataFrame:
-        """
-        Return: DataFrame of smoothen price with date
-        """
-        return pd.DataFrame(self.smoothen_price)
     
-    def set_smoothen_price_blackman(self, col_name: str, N: int=10)->None:
+    def set_smoothen_price_blackman(self, src_data: pd.Series, N: int=10)->pd.Series:
         """
-        smoothen ['col_name'] of self.stock_data (mutating)
+        smoothen ['col_name'] of self.stock_data
         - set fcuntion of self.smoothen_price
         - no return
 
@@ -213,13 +230,14 @@ class StockAnalyser():
         N: extend of smoothening. smaller->More accurate; larger -> more smooth
         """
         window = np.blackman(N)
-        smoothed_data = np.convolve(window / window.sum(), self.stock_data[f"{col_name}"], mode="same")
+        smoothed_data = np.convolve(window / window.sum(), src_data, mode="same")
         smoothed_data_chop = smoothed_data[1:-1]
         #exclude last and first raw
-        self.smoothen_price = pd.DataFrame(smoothed_data_chop, index=self.stock_data.index[1:-1], columns=["Data"])
+        self.smoothen_price = pd.DataFrame(smoothed_data_chop, index=src_data.index[1:-1], columns=["Data"])
+        return self.smoothen_price
 
     
-    def set_smoothen_price_polyfit(self, col_name: str)->None:         
+    def set_smoothen_price_polyfit(self, src_data: pd.Series)->pd.Series:         
         """
         smoothen ['col_name'] of self.stock_data by polyfit (mutating)
         not work to smooth ma potentially due to NaN value
@@ -230,22 +248,22 @@ class StockAnalyser():
         N: extend of smoothening. smaller->More accurate; larger -> more smooth
         """
         degree = 10
-        logger.debug(f"---{col_name}---")
-        logger.debug(self.stock_data[f"{col_name}"])
+
     
 
-        X = np.array(self.stock_data[f"{col_name}"].reset_index().index)
-        Y = self.stock_data[f"{col_name}"].to_numpy()
+        X = np.array(src_data.reset_index().index)
+        Y = src_data.to_numpy()
 
         
             
         poly_fit = np.poly1d(np.polyfit(X, Y, degree))
 
         self.smoothen_price = pd.DataFrame(poly_fit(X), columns=["Data"], index=self.stock_data.index)
+        return self.smoothen_price
     
 
 
-    def smoothen_non_mutate(self, original_data: pd.Series, N: int=10) -> pd.DataFrame:
+    def smoothen_non_mutate(self, original_data: pd.Series, N: int=10) -> pd.DataFrame:     #can be delete later
         """
         Return: 1-col-DataFrame of smoothen data (length differ with original data)
         non-mutating
@@ -262,22 +280,22 @@ class StockAnalyser():
 
         return smoothed_data
     
-    def set_all_local_extrema(self):
+    def add_col_all_vertex(self, src_data: pd.Series)-> None:
         """
         just locate all vertex by comparing with prev 1 and foraward 1 data 
         """
         peaks_lst=[]
         peak_dates=[]
         for i in range(1, self.data_len-1):
-            if (self.stock_data['Close'][i] > self.stock_data['Close'][i-1] ) & (self.stock_data['Close'][i] > self.stock_data['Close'][i+1]):
-                peaks_lst.append(self.stock_data['Close'][i])
-                peak_dates.append(self.stock_data.index[i])
+            if (src_data[i] > src_data[i-1] ) & (src_data[i] > src_data[i+1]):
+                peaks_lst.append(src_data[i])
+                peak_dates.append(src_data.index[i])
         bottoms_lst=[]
         bottom_dates=[]
         for i in range(1, self.data_len-1):
-            if (self.stock_data['Close'][i] < self.stock_data['Close'][i-1] ) & (self.stock_data['Close'][i] < self.stock_data['Close'][i+1]):
-                bottoms_lst.append(self.stock_data['Close'][i])
-                bottom_dates.append(self.stock_data.index[i])
+            if (src_data[i] < src_data[i-1] ) & (src_data[i] < src_data[i+1]):
+                bottoms_lst.append(src_data[i])
+                bottom_dates.append(src_data.index[i])
 
         peaks = pd.DataFrame({"price": peaks_lst, "type": self.PEAK}, index=peak_dates)
         bottoms = pd.DataFrame({"price": bottoms_lst, "type": self.BOTTOM}, index=bottom_dates)
@@ -293,7 +311,7 @@ class StockAnalyser():
 
             
 
-    def set_extrema(self, data: str='', interval: int=5, window_dir: str='left'):
+    def set_extrema(self, src_data: pd.Series, interval: int=5, window_dir: str='left'):
         """
         set function of self.extrema, self.peak_indexes, self.bottom_indexes
         - if data not specified, calulate base on self.smoothen_price 
@@ -305,13 +323,9 @@ class StockAnalyser():
 
         """
 
-        if data=='':
-            data_src = self.smoothen_price
-        else:
-            data_src = self.stock_data[data]
 
-        self.bottom_indexs = argrelextrema(data_src.to_numpy(), np.less)[0]
-        self.peak_indexes = argrelextrema(data_src.to_numpy(), np.greater)[0]
+        self.bottom_indexs = argrelextrema(src_data.to_numpy(), np.less)[0]
+        self.peak_indexes = argrelextrema(src_data.to_numpy(), np.greater)[0]
             
         extrema_idx_lst=[]
         for i in self.bottom_indexs:
@@ -323,11 +337,7 @@ class StockAnalyser():
         extrema_idx_lst.sort()
         extrema_dates = []
         extrema_close=[]
-        print("extrema_idx_lst")
-        print(extrema_idx_lst[0][0])
-        print(extrema_idx_lst[1][0])
-        print(extrema_idx_lst[2][0])
-        print(type(extrema_idx_lst[1][0]))
+
 
         ## check does peak-bottom appear alternatingly
 
@@ -339,22 +349,20 @@ class StockAnalyser():
                     btm = float('inf')
                     btm_idx=0
                     for j in range(extrema_idx_lst[i-1][0], extrema_idx_lst[i][0]):
-                        if self.stock_data['Close'][j] < btm:
-                            btm = self.stock_data['Close'][j]
+                        if src_data[j] < btm:
+                            btm = src_data[j]
                             btm_idx = j
-                    print(type(btm_idx))
-                    print(btm_idx)
+
                     extrema_idx_lst.insert(i, (btm_idx, self.BOTTOM))
 
                 else: # 2 bottoms
                     pk = float('-inf')
                     pk_idx=0
                     for j in range(extrema_idx_lst[i-1][0], extrema_idx_lst[i][0]):
-                        if self.stock_data['Close'][j] > pk:
-                            pk = self.stock_data['Close'][j]
+                        if src_data[j] > pk:
+                            pk = src_data[j]
                             pk_idx = j
-                    print(type(pk_idx))
-                    print(pk_idx)
+
                     extrema_idx_lst.insert(i, (pk_idx, self.PEAK))
 
         
@@ -366,13 +374,13 @@ class StockAnalyser():
             if window_dir=='left':
                 upper_boundary = min(extrema_idx_lst[i][0] + 1,
                                      extrema_idx_lst[i+1][0] if i<len(extrema_idx_lst)-1 else extrema_idx_lst[i][0] + 1, 
-                                     len(self.stock_data['Close']))
+                                     len(src_data))
 
             else :
                 upper_boundary = min(extrema_idx_lst[i][0] + 1 +interval,
                                      extrema_idx_lst[i+1][0] if i<len(extrema_idx_lst)-1 else extrema_idx_lst[i][0] + 1, 
-                                     len(self.stock_data['Close']))
-            stock_data_in_interval = self.stock_data['Close'].iloc[list(range(lower_boundary, upper_boundary))]
+                                     len(src_data))
+            stock_data_in_interval = src_data.iloc[list(range(lower_boundary, upper_boundary))]
             
             extrema_dates.append(stock_data_in_interval.idxmax() if extrema_idx_lst[i][1] else stock_data_in_interval.idxmin())
             extrema_close.append((stock_data_in_interval.max(),self.PEAK) if extrema_idx_lst[i][1] else (stock_data_in_interval.min(), self.BOTTOM))
@@ -456,23 +464,13 @@ class StockAnalyser():
 
 
 
-    def set_zigizag(self, upthres: float=0.09, downthres: float=0.09) -> None:
+    def set_zigizag_trend(self, src_data: pd.Serise, upthres: float=0.09, downthres: float=0.09) -> None:
         self.stock_data['zigzag'] = np.nan
-        self.stock_data['zigzag'] = zz.peak_valley_pivots(self.stock_data['Close'], upthres, -downthres)
+        self.stock_data['zigzag'] = zz.peak_valley_pivots(src_data, upthres, -downthres)
         self.stock_data.iloc[-1, self.stock_data.columns.get_loc('zigzag')] = (-1)* self.stock_data[self.stock_data['zigzag'] !=0]['zigzag'][-2]
         # correct the problem that last point of zigzag is flipped sometime
         self.extrema['zigzag'] = self.stock_data[self.stock_data['zigzag'] !=0]['zigzag']
         logger.debug("set zigzag done")
-
-    def set_trend(self) -> None:
-        """
-        set up/down trend by zigzag indicator
-        """
-        try:
-            assert 'zigzag' in self.stock_data
-        except AssertionError:
-            logger.warning("zigzag must before set before set trend!\nProgram Exit")
-            exit(1)
 
         self.stock_data['trend'] = np.nan
         cur_trend=0
@@ -484,9 +482,13 @@ class StockAnalyser():
             else:
                 self.stock_data.iloc[i, trend_col] = self.stock_data['trend'][i-1]
         logger.debug("set trend done")
+
+    
         
     
-    def set_breakpoint(self, zzupthres: int, 
+    def set_breakpoint(self, 
+                       close_price: pd.Series, trend: pd.Serise, zz: pd.Serise,
+                       zzupthres: int, 
                        bp_filter_conv_drop: bool=True,
                        bp_filter_rising_peak: bool=True,
                        bp_filter_uptrend: bool=True) -> None:
@@ -521,7 +523,6 @@ class StockAnalyser():
         POS_INF = float('inf')
 
 
-        filtered = self.stock_data[self.stock_data['trend']==1]     # filter uptrend
         self.stock_data['starred point'] = np.nan
         prev_pbc = POS_INF
         chck_date_idx = np.nan
@@ -537,18 +538,18 @@ class StockAnalyser():
         prev_peak = POS_INF
         i=0
         while i< self.data_len-2:
-            # if self.stock_data['zigzag'][i] ==1:
+            # if zz[i] ==1:
             #     prev_pbc = POS_INF
             #     chck_date_idx = np.nan
             
-            if self.stock_data['zigzag'][i] ==-1:     # encounter big bottom
+            if zz[i] ==-1:     # encounter big bottom
                 
                 
                 chck_date_idx = np.nan
                 
                 j = 1 if incl_1st_btm else 0
-                cur_big_btm = self.stock_data['Close'][i]
-                while self.stock_data['zigzag'][i+j] != 1 :   # not encounter big peak yet
+                cur_big_btm = close_price[i]
+                while zz[i+j] != 1 :   # not encounter big peak yet
                     rise_back_offset=18250      # random large number
                     next_peak_offset =0
                     if self.stock_data['type'][i+j] == -1:
@@ -559,15 +560,15 @@ class StockAnalyser():
                                 l-=1
                             else:
                                 break
-                        prev_peak = self.stock_data['Close'][i+j+l] if l !=0 else prev_peak
+                        prev_peak = close_price[i+j+l] if l !=0 else prev_peak
 
                         rise_back_flag = False
                         break_pt_found_flag = False
                       
                         
 
-                        while self.stock_data['type'][i+j+next_peak_offset] != 1 and self.stock_data['zigzag'][i+j+next_peak_offset] != 1: #find next little peak
-                            if self.stock_data['Close'][i+j+next_peak_offset] >= prev_peak: # record closest date rise back to prev peak
+                        while self.stock_data['type'][i+j+next_peak_offset] != 1 and zz[i+j+next_peak_offset] != 1: #find next little peak
+                            if close_price[i+j+next_peak_offset] >= prev_peak: # record closest date rise back to prev peak
                                 if not rise_back_flag:
                                     rise_back_offset = next_peak_offset
                                     rise_back_flag = True
@@ -583,7 +584,7 @@ class StockAnalyser():
                         if (to_find_bp_flag 
                             and ( (not bp_filter_conv_drop) or self.stock_data['p-b change'][i+j] > prev_pbc )
                             and ( (not bp_filter_rising_peak) or rise_back_flag )
-                            and ( (not bp_filter_uptrend) or self.stock_data['Close'][potential_bp] > cur_big_btm*(1+zzupthres) ) 
+                            and ( (not bp_filter_uptrend) or close_price[potential_bp] > cur_big_btm*(1+zzupthres) ) 
                             ):  
                             break_pt_found_flag = True
                             
@@ -607,11 +608,67 @@ class StockAnalyser():
         
 
 
+    def plot_peak_bottom(self, extrema: pd.Serise,
+                         line_cols: list=[], 
+                  scatter_cols: list=[], plt_title: str='Extrema', 
+                  annot: bool=True, text_box: str='', annotfont: float=6, 
+                     showOption: str='show', savedir: str='', figsize: tuple=(36, 16)) :
+        """
+            extrema: pd Sereise with peak=1, bottom=0
 
-        
+            TO BE IMPLEMENT
+
+        """
+        color_list=['fuchsia', 'cyan', 'tomato', 'peru', 'green', 'olive', 'tan', 'darkred']
+        for i in range(0, len(line_cols)):   
+            plt.plot(line_cols[i], label=line_cols[i].name, 
+                     alpha=0.6, linewidth=1.5, color=color_list[i])
+            
+        #plt.plot(peak, "x", color='limegreen', markersize=4)
+        #plt.plot(btm, "x", color='salmon', markersize=4)
+
+        # annot_y_offset= self.stock_data['Close'][-1]*0.001
+        # if annot:
+            
+        #     for i in range(0, len(self.extrema)):
+        #         bar = ", %d bar"%(self.extrema['bar'][i]) if self.extrema['bar'][i]>0 else ''
+        #         if self.extrema['type'][i]==self.PEAK:
+                    
+        #             ax.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]) +bar,
+        #                     (self.extrema.index[i], self.extrema['price'][i]+annot_y_offset), fontsize=annotfont, ha='left', va='bottom' )
+        #         if self.extrema['type'][i]==self.BOTTOM:
+        #             ax.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]) 
+        #                         +bar,
+        #                     (self.extrema.index[i], self.extrema['price'][i]-annot_y_offset*3), fontsize=annotfont, ha='left', va='top' )
 
     
-    def plot_extrema(self, cols: list=[], plt_title: str='Extrema', annot: bool=True, text_box: str='', annotfont: float=6, 
+    def plot_cols(self, line_cols: list=[], 
+                  scatter_cols: list=[], plt_title: str='Extrema', 
+                  annot: bool=True, text_box: str='', annotfont: float=6, 
+                     showOption: str='show', savedir: str='', figsize: tuple=(36, 16)) :
+        
+        """
+        TO BE IMPLEMENT
+        plot columns
+        - line_cols: list of pd.Serise to plot line graph
+        - scatter_cols: list of pd.Serise to plot scatter plot
+        """
+
+        for i in range(0, len(line_cols)):   
+            plt.plot(line_cols[i], label=line_cols[i].name, 
+                     alpha=0.6, linewidth=1.5, color=color_list[i])
+            
+        for i in range(0, len(scatter_cols)):   
+            plt.plot(scatter_cols[i], label=scatter_cols[i].name, 
+                     alpha=0.6, linewidth=1.5, color=color_list[i])
+
+        plt.plot(figsize=figsize, dpi=200)
+        color_list=['fuchsia', 'cyan', 'tomato', 'peru', 'green', 'olive', 'tan', 'darkred']
+
+
+
+    
+    def plot_extrema_from_self(self, cols: list=[], plt_title: str='Extrema', annot: bool=True, text_box: str='', annotfont: float=6, 
                      showOption: str='show', savedir: str='', figsize: tuple=(36, 16)) :
 
         """
@@ -769,6 +826,130 @@ class StockAnalyser():
         #plt.plot(self.stock_data['ema12'], label='ema12', alpha=0.8, linewidth=0.8)
         #plt.plot(self.stock_data['ema26'], label='ema26',alpha=0.8, linewidth=0.8)
         pass
+
+
+    def default_analyser(self, tickers: str, start: str, end: str,
+            method: str='', T: int=0, 
+            window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
+           bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
+           extra_text_box:str='',
+           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6) ->pd.DataFrame:
+
+        """
+        run everything
+
+        return: self.stock_data, dataframe of stock informartion
+
+            
+        Parameter
+
+        - method: options: 'ma', 'ema', 'dma', 'butter', 'close'|
+        - T: day range of taking ma/butterworth low pass filter |
+        - window_size: window to locate extrema from approx. price |
+        - extra_text_box: extra textbox to print on graph|
+        - graph_showOption: 'save', 'show', 'no'
+    
+        """
+
+        ## To Do: need check fuction
+        self.download(tickers, start, end)
+
+        extra_col_name =[]
+        smooth=False
+
+        ## Parameter Checking
+
+        if T<1 and method != 'close':
+            raise Exception("T must >=1")
+
+        if method=='close':
+            self.set_extrema(src_data=self.stock_data['Close'], interval=0)
+
+        else:
+            if method =='ma' or method =='ema' or  method =='dma':
+                self.add_column_ma(self.stock_data['Close'], method, T)
+                #self.add_col_slope(f"{method}{T}")
+                extra_col_name=[f"{method}{T}"]
+
+                # smooth
+                if smooth:
+                    if (method =='ma' or method=='ema') :
+                        self.set_smoothen_price_blackman(self.stock_data[f"{method}{T}"], N=smooth_ext)
+                        self.set_extrema(interval=window_size)
+                            
+                    elif method =='dma':
+                        self.set_smoothen_price_blackman(self.stock_data[f"{method}{T}"], N=smooth_ext)
+                        self.set_extrema(interval=window_size, window_dir='both')
+                    else:
+                        self.set_smoothen_price_blackman('Close', N=smooth_ext)
+                        self.set_extrema(interval=window_size)
+
+
+                # no smooth
+                if not smooth:
+
+                    if method=='ma' or method=='ema':
+                        self.set_extrema(self.stock_data[f"{method}{T}"], interval=window_size)
+                    elif method =='dma':
+                        self.set_extrema(self.stock_data[f"{method}{T}"], interval=window_size, window_dir='both')
+                        
+                    else:
+                        self.set_extrema(self.stock_data['Close'], interval=window_size)
+
+            elif method =='butter':
+                
+                self.butter(T)
+                self.set_extrema(self.stock_data[f'buttered Close T={T}'], window_dir='both')
+                extra_col_name=[f'buttered Close T={T}']
+            else:
+                raise Exception("invalid method")
+        
+        self.set_zigizag_trend(upthres=zzupthres, downthres=zzdownthres)
+        
+
+        self.add_col_macd()
+        
+        logger.debug("-- Stock Data --")
+        self.print_self_data()
+        logger.debug("number of price point:", len(self.get_stock_data()))
+
+        logger.debug("-- Extrema --")
+        logger.debug(tabulate(self.get_extrema(), headers='keys', tablefmt='psql', floatfmt=("", ".2f","g", ".2%",)))
+        logger.debug("number of extrema point:", len(self.get_extrema()))
+
+
+        #self.set_breakpoint(zzupthres=zzupthres, 
+        #                     bp_filter_conv_drop=bp_filter_conv_drop, bp_filter_rising_peak=bp_filter_rising_peak, bp_filter_uptrend=bp_filter_uptrend)
+        
+
+        rt = time.time()
+
+        if graph_showOption != 'no':
+            plot_start = time.time()
+            logger.info("plotting graph..")
+
+            #fig, ax = plt.subplots()
+            #ax.figure(figsize=(36, 16), dpi=400)
+
+            # ax.grid(which='major', color='lavender', linewidth=2)
+            # ax.grid(which='minor', color='lavender', linewidth=2)
+            self.plot_extrema_from_self(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, 
+                            text_box=f"{tickers}, {start} - {end}, window={window_size}\n{extra_text_box}", 
+                            annotfont=annotfont, showOption=graph_showOption, savedir=graph_dir)
+            # self.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
+            # self.plot_break_pt()
+            # self.plot_macd()
+            # plt.legend()
+            
+            plot_end = time.time()
+
+            if graph_showOption == 'save':
+                plt.savefig(graph_dir)
+                logger.info("graph saved")
+            else:
+                plt.show()
+                logger.info("graph shown")
+        return self.stock_data
         
 
 
@@ -844,8 +1025,8 @@ def runner(tickers: str, start: str, end: str,
         else:
             raise Exception("invalid method")
     
-    #stock.set_zigizag(upthres=zzupthres, downthres=zzdownthres)
-    #stock.set_trend()
+    stock.set_zigizag_trend(upthres=zzupthres, downthres=zzdownthres)
+    
 
     stock.add_col_macd()
     
@@ -872,7 +1053,7 @@ def runner(tickers: str, start: str, end: str,
 
     # ax.grid(which='major', color='lavender', linewidth=2)
     # ax.grid(which='minor', color='lavender', linewidth=2)
-    stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, 
+    stock.plot_extrema_from_self(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, 
                        text_box=f"{tickers}, {start} - {end}, window={window_size}\n{extra_text_box}", 
                        annotfont=annotfont, showOption=graph_showOption, savedir=graph_dir)
     # stock.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
