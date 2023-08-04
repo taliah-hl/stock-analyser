@@ -150,11 +150,11 @@ class StockAnalyser():
         calculate slope of segment of given col name
         """
         slope_lst=[np.nan]
-        for i in range(0, len(self.stock_data[col_name])-1):
-            if(self.stock_data[col_name][i+1]==0 or self.stock_data[col_name][i]==0):
+        for i in range(1, len(self.stock_data[col_name])):
+            if(self.stock_data[col_name][i-1]==0 or self.stock_data[col_name][i]==0):
                 slope_lst.append(np.nan)
             else:
-                slope_lst.append(self.stock_data[col_name][i+1] - self.stock_data[col_name][i])
+                slope_lst.append(self.stock_data[col_name][i] - self.stock_data[col_name][i-1])
         self.stock_data[f'slope {col_name}'] = slope_lst
 
     def add_col_macd(self):
@@ -625,23 +625,23 @@ class StockAnalyser():
 
          """
          
-        
-        plt.plot(self.stock_data['Close'], label='close price', color='blue', alpha=0.8, linewidth=0.8)
+        fig, ax = plt.subplots(figsize=(60,40), dpi=200)
+        ax.plot(self.stock_data['Close'], label='close price', color='blue', alpha=0.8, linewidth=0.8)
 
         color_list=['fuchsia', 'cyan', 'tomato', 'peru', 'green', 'olive', 'tan', 'darkred']
 
         for i in range(0, len(cols)):    
             
-            plt.plot(self.stock_data[cols[i]], 
+            ax.plot(self.stock_data[cols[i]], 
                     label=cols[i] if isinstance(cols[i], str) else '',
                     alpha=0.6, linewidth=1.5, color=color_list[i])
             
         if self.smoothen_price is not None:
-            plt.plot(self.smoothen_price[self.smoothen_price>0], color='gold')
+            ax.plot(self.smoothen_price[self.smoothen_price>0], color='gold')
 
         if self.extrema is not None:
-            plt.plot(self.extrema[self.extrema["type"]==self.PEAK]['price'], "x", color='limegreen', markersize=4)
-            plt.plot(self.extrema[self.extrema["type"]==self.BOTTOM]['price'], "x", color='salmon', markersize=4)
+            ax.plot(self.extrema[self.extrema["type"]==self.PEAK]['price'], "x", color='limegreen', markersize=4)
+            ax.plot(self.extrema[self.extrema["type"]==self.BOTTOM]['price'], "x", color='salmon', markersize=4)
         
             ## Annotation ##
             annot_y_offset= self.stock_data['Close'][-1]*0.001
@@ -651,10 +651,10 @@ class StockAnalyser():
                     pbday = ", %d bar"%(self.extrema['bar'][i]) if self.extrema['bar'][i]>0 else ''
                     if self.extrema['type'][i]==self.PEAK:
                         
-                        plt.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]) +pbday,
+                        ax.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]) +pbday,
                                 (self.extrema.index[i], self.extrema['price'][i]+annot_y_offset), fontsize=annotfont, ha='left', va='bottom' )
                     if self.extrema['type'][i]==self.BOTTOM:
-                        plt.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]) 
+                        ax.annotate("{:.2f}".format(self.extrema['price'][i]) + ", {:.2%}".format(self.extrema['percentage change'][i]) 
                                  +pbday,
                                 (self.extrema.index[i], self.extrema['price'][i]-annot_y_offset*3), fontsize=annotfont, ha='left', va='top' )
 
@@ -662,7 +662,7 @@ class StockAnalyser():
         
             ## Textbox on left-top corner ##
             # textbox is plot on relative position of graph regardless of value of x/y axis
-            plt.text(0.01, 1,  text_box, fontsize=8, color='saddlebrown', ha='left', va='bottom',  transform=plt.gca().transAxes) 
+            ax.text(0.01, 1,  text_box, fontsize=8, color='saddlebrown', ha='left', va='bottom',  transform=plt.gca().transAxes) 
 
             ## Textbox of drop from last high ##
             if self.peak_indexes is not None:
@@ -684,22 +684,29 @@ class StockAnalyser():
                 
                 logger.debug("latest price: ", self.stock_data['Close'].iloc[-1])
                 perc = ( self.stock_data['Close'].iloc[-1] - maxval)/maxval              
-                plt.text(0.9, 1.1, "lastest high: "+"{:.2f}".format(maxval), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
-                plt.text(0.9, 1.08, "current:  "+"{:.2f}".format(self.stock_data['Close'].iloc[-1]), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
-                plt.text(0.9, 1.06, 'drop from last high: '+'{:.2%}'.format(perc), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
-                plt.scatter(maxdate, maxval, s=self.SCATTER_MARKER_SIZE, marker='d', color='lime')
+                ax.text(0.9, 1.1, "lastest high: "+"{:.2f}".format(maxval), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
+                ax.text(0.9, 1.08, "current:  "+"{:.2f}".format(self.stock_data['Close'].iloc[-1]), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
+                ax.text(0.9, 1.06, 'drop from last high: '+'{:.2%}'.format(perc), fontsize=7,  ha='left', va='top',  transform=plt.gca().transAxes)
+                ax.scatter(maxdate, maxval, s=self.SCATTER_MARKER_SIZE, marker='d', color='lime')
                 if plot_latest_high:
                 # TO DO
-                    plt.text(maxdate-pd.DateOffset(1), maxval + annot_y_offset*2, "{:.2f}".format(maxval), fontsize=7,  ha='left', va='bottom', color='limegreen')
-                plt.text(self.stock_data.index[-1] + pd.DateOffset(3), self.stock_data['Close'][-1] *0.95 , 'drop from last high: \n'+'{:.2%}'.format(perc), fontsize=8)
+                    ax.text(maxdate-pd.DateOffset(1), maxval + annot_y_offset*2, "{:.2f}".format(maxval), fontsize=7,  ha='left', va='bottom', color='limegreen')
+                ax.text(self.stock_data.index[-1] + pd.DateOffset(3), self.stock_data['Close'][-1] *0.95 , 'drop from last high: \n'+'{:.2%}'.format(perc), fontsize=8)
 
 
         ### --- cutom plot here  --- ###
 
         #plt.plot(self.stock_data['buttered Close T=20'], alpha=0.8, linewidth=1.5, label='buttered Close T=20', color='cyan')
         #plt.plot(self.stock_data['buttered Close T=60'], alpha=0.8, linewidth=1.5, label='buttered Close T=60', color='magenta')
+        ax.plot(self.stock_data['MACD'], label='MACD', alpha=0.8, linewidth=1.5)
+        ax.plot(self.stock_data['signal'], label='signal', alpha=0.8, linewidth=1.5)
+        ax.fill_between(self.stock_data.index, self.stock_data['Close'][-1], 0, where=self.stock_data['slope MACD']>0.01, facecolor='palegreen', alpha=.2)
+        ax.fill_between(self.stock_data.index, self.stock_data['Close'].max(), 0, where=self.stock_data['slope MACD']<0, facecolor='pink', alpha=.1)
 
-        
+        ax.grid(which='major', color='lavender', linewidth=3)
+        ax.grid(which='minor', color='lavender', linewidth=3)
+        #plt.figure(figsize=(24, 10), dpi=200)
+        plt.legend()
         plt.title(plt_title)
         
         # if showOption=='save':
@@ -717,7 +724,7 @@ class StockAnalyser():
         plt.scatter(self.stock_data[self.stock_data['zigzag'] ==1].index, self.stock_data[self.stock_data['zigzag'] ==1]['Close'], color='g', s=self.SCATTER_MARKER_SIZE) #peak
         plt.scatter(self.stock_data[self.stock_data['zigzag'] ==-1].index, self.stock_data[self.stock_data['zigzag'] ==-1]['Close'], color='red',s=self.SCATTER_MARKER_SIZE)  #bottom
         plt.plot(self.stock_data[self.stock_data['zigzag'] !=0].index, self.stock_data[self.stock_data['zigzag'] !=0]['Close'], 
-                 label='zigzag indicator',color='dimgrey', alpha=0.8, linewidth=0.8)
+                 label='zigzag indicator',color='dimgrey', alpha=0.8, linewidth=1.5)
         
         for i in range(0, len(self.stock_data['Close'])):
             if self.stock_data['zigzag'][i] ==-1:
@@ -759,10 +766,11 @@ class StockAnalyser():
             plt.annotate("Break pt: "+ind.strftime("%Y-%m-%d")+", $"+"{:.2f}".format(val), (ind, val-annot_y_offset*2), fontsize=6, ha='left', va='top', color='darkgoldenrod')
             
     def plot_macd(self):
-        plt.plot(self.stock_data['ema12'], label='ema12', alpha=0.8, linewidth=0.8)
-        plt.plot(self.stock_data['ema26'], label='ema26',alpha=0.8, linewidth=0.8)
-        plt.plot(self.stock_data['MACD'], label='MACD', alpha=0.8, linewidth=0.8)
-        plt.plot(self.stock_data['signal'], label='signal', alpha=0.8, linewidth=0.8)
+        #plt.plot(self.stock_data['ema12'], label='ema12', alpha=0.8, linewidth=0.8)
+        #plt.plot(self.stock_data['ema26'], label='ema26',alpha=0.8, linewidth=0.8)
+        pass
+        
+
 
 
 
@@ -859,16 +867,18 @@ def runner(tickers: str, start: str, end: str,
     plot_start = time.time()
     logger.info("plotting graph..")
 
-    plt.figure(figsize=(36, 16), dpi=400)
-    plt.grid(which='major', color='lavender', linewidth=2)
-    plt.grid(which='minor', color='lavender', linewidth=2)
+    #fig, ax = plt.subplots()
+    #ax.figure(figsize=(36, 16), dpi=400)
+
+    # ax.grid(which='major', color='lavender', linewidth=2)
+    # ax.grid(which='minor', color='lavender', linewidth=2)
     stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, 
                        text_box=f"{tickers}, {start} - {end}, window={window_size}\n{extra_text_box}", 
                        annotfont=annotfont, showOption=graph_showOption, savedir=graph_dir)
     # stock.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
     # stock.plot_break_pt()
-    stock.plot_macd()
-    plt.legend()
+    # stock.plot_macd()
+    # plt.legend()
     
     plot_end = time.time()
 
