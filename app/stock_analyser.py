@@ -323,11 +323,7 @@ class StockAnalyser():
         extrema_idx_lst.sort()
         extrema_dates = []
         extrema_close=[]
-        print("extrema_idx_lst")
-        print(extrema_idx_lst[0][0])
-        print(extrema_idx_lst[1][0])
-        print(extrema_idx_lst[2][0])
-        print(type(extrema_idx_lst[1][0]))
+
 
         ## check does peak-bottom appear alternatingly
 
@@ -342,8 +338,7 @@ class StockAnalyser():
                         if self.stock_data['Close'][j] < btm:
                             btm = self.stock_data['Close'][j]
                             btm_idx = j
-                    print(type(btm_idx))
-                    print(btm_idx)
+
                     extrema_idx_lst.insert(i, (btm_idx, self.BOTTOM))
 
                 else: # 2 bottoms
@@ -353,8 +348,7 @@ class StockAnalyser():
                         if self.stock_data['Close'][j] > pk:
                             pk = self.stock_data['Close'][j]
                             pk_idx = j
-                    print(type(pk_idx))
-                    print(pk_idx)
+
                     extrema_idx_lst.insert(i, (pk_idx, self.PEAK))
 
         
@@ -737,7 +731,7 @@ class StockAnalyser():
     
     def plot_break_pt(self):
         try:
-            assert 'starred point' in self.stock_data
+            assert 'starred point' in self.stock_datammit
         except AssertionError:
             logger.warning("breakpoint must be set before plot")
         
@@ -824,7 +818,6 @@ def runner(tickers: str, start: str, end: str,
                     stock.set_extrema(data=f"{method}{T}", interval=window_size)
                 elif method =='dma':
                     stock.set_extrema(data=f"{method}{T}", interval=window_size, window_dir='both')
-                    print("hi ema")
                 else:
                     stock.set_extrema('Close', interval=window_size)
 
@@ -836,8 +829,8 @@ def runner(tickers: str, start: str, end: str,
         else:
             raise Exception("invalid method")
     
-    #stock.set_zigizag(upthres=zzupthres, downthres=zzdownthres)
-    #stock.set_trend()
+    stock.set_zigizag(upthres=zzupthres, downthres=zzdownthres)
+    stock.set_trend()
 
     stock.add_col_macd()
     
@@ -850,8 +843,8 @@ def runner(tickers: str, start: str, end: str,
     logger.debug("number of extrema point:", len(stock.get_extrema()))
 
 
-    #stock.set_breakpoint(zzupthres=zzupthres, 
-    #                     bp_filter_conv_drop=bp_filter_conv_drop, bp_filter_rising_peak=bp_filter_rising_peak, bp_filter_uptrend=bp_filter_uptrend)
+    stock.set_breakpoint(zzupthres=zzupthres, 
+                        bp_filter_conv_drop=bp_filter_conv_drop, bp_filter_rising_peak=bp_filter_rising_peak, bp_filter_uptrend=bp_filter_uptrend)
      
 
     rt = time.time()
@@ -865,9 +858,9 @@ def runner(tickers: str, start: str, end: str,
     stock.plot_extrema(cols=extra_col, plt_title=f"{tickers} {method}{T}", annot=True, 
                        text_box=f"{tickers}, {start} - {end}, window={window_size}\n{extra_text_box}", 
                        annotfont=annotfont, showOption=graph_showOption, savedir=graph_dir)
-    # stock.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
-    # stock.plot_break_pt()
-    stock.plot_macd()
+    stock.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
+    stock.plot_break_pt()
+    #stock.plot_macd()
     plt.legend()
     
     plot_end = time.time()
@@ -900,7 +893,7 @@ if __name__ == "__main__":
     logger.remove()     # remove deafult logger before adding custom logger
     logger.add(
         sys.stderr,
-        level='DEBUG'
+        level='INFO'
 
     )
     logger.add(
@@ -915,7 +908,7 @@ if __name__ == "__main__":
     parser.add_argument('--ticker', type=str, default='')
     parser.add_argument('--start',  type=str, default='2022-07-20')
     parser.add_argument('--end',  type=str, default='2023-07-22')
-    parser.add_argument('--stocklist_file',type=str, default='nan')
+    parser.add_argument('--stocklist_file',type=str, default='')
     parser.add_argument('--graph_dir',type=str, default='../../stock')  # no .png
     args=parser.parse_args()
 
@@ -958,22 +951,22 @@ if __name__ == "__main__":
     
 
             
-    elif stock_lst_file != 'nan':
+    elif stock_lst_file != '':
         logger.info(f"stock list file got: {stock_lst_file}")
         with open(stock_lst_file, 'r') as fio:
             lines = fio.readlines()
         
         for item in lines:
-            item=item.strip()
-            logger.info(f"getting info of {item}")
-            runner(item, stockstart, stockend, method='close', T=0, window_size=5, zzupthres=0.09, zzdownthres=0.13,
-                extra_text_box='converging bottom+uptrend filter, upzz=9%, downzz=13%',
-                graph_showOption='save', graph_dir=f'{graph_file_dir}_{item}.png',
-                bp_filter_rising_peak=False, bp_filter_conv_drop=True, bp_filter_uptrend=False,
-                figsize=(240, 144), annotfont=4)
-            logger.info(f"{item} analyse done")
-        
-        logger.info(f"{item} analyse done")
+            if item:
+                item=item.strip()
+                logger.info(f"getting info of {item}")
+                runner(item, stockstart, stockend, method='close', T=0, window_size=5, zzupthres=0.09, zzdownthres=0.13,
+                    extra_text_box='converging bottom+uptrend filter, upzz=9%, downzz=13%',
+                    graph_showOption='save', graph_dir=f'{graph_file_dir}_{item}.png',
+                    bp_filter_rising_peak=False, bp_filter_conv_drop=True, bp_filter_uptrend=False,
+                    figsize=(240, 144), annotfont=4)
+                logger.info(f"{item} analyse done")
+        logger.info("--  watch list from file run done  --")
 
     else:
 
