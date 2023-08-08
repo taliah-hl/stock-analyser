@@ -1259,8 +1259,8 @@ if __name__ == "__main__":
     parser.add_argument('--end',  type=str, default='2023-08-03')
     parser.add_argument('--stocklist_file',type=str, default=None)
     parser.add_argument('--graph_dir',type=str, default='../../')  # no .png
-    parser.add_argument('--figsize', type=tuple, default=(40,25))
-    parser.add_argument('--figdip', type=int, default=200)
+    parser.add_argument('--figsize', type=tuple, default=(40,20))
+    parser.add_argument('--figdpi', type=int, default=200)
     args=parser.parse_args()
 
 
