@@ -7,55 +7,130 @@ main class: `StockAnalyser` in app/stock_analyser.py
 
 ## Goal
 
-- to draw bowls on historical stock price in different time frame
+1. to draw bowls on historical stock price in different time frame
+
+2. find break point
 
 ## Setting
 
-**break point condition set 1**
+**Break point condition**
 
-For all points during uptrend (not include starting point):
 
-1. peak-to-bottom drop less than previous peak-to-bottom drop
 
-2. Price rise above previous peak before next bottom
+For all bottoms during uptrend:
 
-3. cur price rise above prev big bottom * 1+ zigzag threshold (up trend already detected on that day)
+- filter 1: converging drop
 
-Config:
+  - peak-to-bottom drop less than previous peak-to-bottom drop
 
-- Smooth by ema5
+- filter 2: rising peak
 
-- Trend found by zigzag 9%
+  - Price rise above previous peak on or before next peak
 
+- filter 3: uptrend detected
+  
+  - cur price rise above prev big bottom * 1+ zigzag up-threshold (only applicable if source of uptrend is zigzag)
+
+
+**Extrema:**
+
+- find extrema from selected price source using `scipy.signal.argrelextrema`
+
+Source of uptrend options:
+- zigzag indicator 
+  OR 
+- MACD Signal
+
+Price source options of finding extrema:
+
+- close price
+- moving average (ma, ema, dma, lwma)
+- close price filered by Butterworth low-pass filter
 
 
 ## How to use
 
 go to app/stock_analyser.py 
 
+### command line run options
+
+- analyse one stock
+
 ```
-if __name__ == "__main__":
+python stock_analyser.py --ticker=PDD --start=2022-08-01 --end=2023-08-01 --graph_dir=../dir/graph_name
+```
 
-    ## Here to try the class
-    runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
+- analyse list of stock from txt file
 
-    ## -- Example -- ##
-    ## E.g. Plot PDD 2022-10-20 to 2023-07-22, get extrema with EMA5
-    # runner('PDD', '2022-10-20', '2023-07-22', method='ema', T=5)
+```
+python stock_analyser.py --stocklist_file=../dir/stock.txt --start=2022-08-01 --end=2023-08-01 --graph_dir=../dir/graph_name
+```
 
-    ## E.g. Plot NVDA 2022-10-20 to 2023-07-22, get extrema with EMA10
-    # runner('NVDA', '2022-10-20', '2023-07-22', method='ema', T=10)
+- analyse list of stock by default stock list in code
 
-    ## E.g. Plot TSLA 2023-02-20 to 2023-07-22, get extrema with butterworth low pass filter with period=10 day
-    # runner('TSLA', '2023-02-20', '2023-07-22', method='butter', T=10)
+```
+python stock_analyser.py --start=2022-08-01 --end=2023-08-01 --graph_dir=../dir/
+
+```
+
+### Use the class
+
+**main runner method**
+```
+def runner_analyser(tickers: str, start: str, end: str, 
+           method: str='', T: int=0, 
+            window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
+            macd_signal_T: int=9,
+           bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
+           extra_text_box:str='',
+           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6)
+  ->pd.DataFrame
+
+```
+return: pd.Dataframe of stock information with peak, bottom, breakpoint etc
+
+Parameter of `runner_analyser`
+- `tickers`: stock symbol
+- `method`: price source to calculate extrema
+- `T`: period of moving average if method set to 'ma', 'ema' or any kind with period required (no effect if method set to 'close')
+- `window_size`: window size to locate extrema from price source specified in `method` (no effect if method set to 'close')
+- `zzupthres`, `zzdownthres`: up/down threshold of zigzag indicator
+- `bp_filter_conv_drop`: to apply converging bottom filter or not when finding breakpoint
+- `bp_filter_rising_peak`: to apply rising peak filter or not when finding breakpoint
+- `bp_filter_uptrend`: to apply uptrend detected filter or not when finding breakpoint (only have effect if trend source is zigzag)
+- `extra_text_box`: text to print on graph (left top corner)
+- `graph_showOption`: 'save', 'show', 'no'
+- `graph_dir`: dir to save graph
+- `figsize`: figure size of graph 
+  - recommend: 1-3 months: figsize=(36,16)
+- `annotfont`: font size of annotation of peak bottom 
+  - recommend: 4-6
+
+
+### Example: using `runner_analyser`
+
+**E.g. 1**: PDD, 12 months plot extrema from close price, find breakpoint with converging drop filter and rising peak filter applied
+
+```
+stock = StockAnalyser()   # init class
+result_df = stock.default_analyser(
+    tickers='PDD', 
+    start='2022-08-01', 
+    end='2023-08-01',
+    method='close', 
+    bp_filter_conv_drop=True, 
+    bp_filter_rising_peak=True,
+    graph_showOption='save'
+)
 
 ```
 
 ## Example Result
 
-- see `result.pdf`
+result of plotting extrema from different price source: 
+- `result_plot_extrema.pdf`
 
-## Techniques Assessed
+## Techniques Studied
 
 - Moving Averages (MA, EMA, DMA)
 - Butterworth Low Pass Filter
