@@ -1,19 +1,21 @@
-from loguru import logger
 import traceback
-import numpy as np
 import warnings
+import argparse
+import sys
+import enum
+import math
+import time
+from datetime import date
+from loguru import logger
+import numpy as np
 import pandas as pd
 from scipy.signal import argrelextrema, butter,filtfilt
 from matplotlib import pyplot as plt
 import yfinance as yf
-import math
 from tabulate import tabulate
 import zigzag as zz
-import time
-from datetime import date
-import argparse
-import sys
-import enum
+
+
 
 class DayType(enum.Enum):
     BUYPT=1
@@ -553,22 +555,19 @@ class StockAnalyser():
 
         
 
-        # converging bottom condition set 1:
+        # converging bottom conditions set:
         # 1. peak-to-bottom drop less than previous peak-to-bottom drop
         # 2. next little peak rise above previous little peak
-        # 3.  cur price rise above prev big bottom * 1+ zigzag threshold (up trend already detected on that day)
+        # 3.  cur price rise above prev big bottom * 1+ zigzag threshold (only apply if source of uptrend is zigzag
         prev_pbc = POS_INF
         prev_peak = POS_INF
 
 
         
         i=0
-        if uptrend_src=='zz':
+        if uptrend_src=='zz':   # use zigzag indicator as uptrend source
             while i< self.data_len-2:
-                # if zz[i] ==1:
-                #     prev_pbc = POS_INF
-                #     chck_date_idx = np.nan
-                
+                                
                 if zz[i] ==-1:     # encounter big bottom
                     
                     
@@ -604,7 +603,7 @@ class StockAnalyser():
                                 if i+j+next_peak_offset+1>self.data_len-1:
                                     break
                             
-                            #potential break point = neif xt little peak or date of rise back to prev peak, which ever earlier
+                            #potential break point = next little peak or date of rise back to prev peak, which ever earlier
                             potential_bp = min(i+j+rise_back_offset, i+j+next_peak_offset)  
 
                         
@@ -628,7 +627,7 @@ class StockAnalyser():
                     i=i+max(j, 1)
                 i+=1
 
-        elif uptrend_src=='other':
+        elif uptrend_src=='other':  # use other indicator as uptrend source, e.g. MACD or MACD signal
             i=0
             while i< self.data_len-2:
                 next_peak_offset=0  
@@ -649,7 +648,7 @@ class StockAnalyser():
                     potential_bp = POS_INF
                     next_peak_found=False
                     
-                    rise_back_offset=0      # random large number
+                    rise_back_offset=0
                     k =0
                     while trend_src[i+k] >0:
                         if close_price[i+k] >= prev_peak: # record closest date rise back to prev peak
@@ -741,6 +740,7 @@ class StockAnalyser():
         
         """
         TO BE IMPLEMENT
+
         plot columns
         - line_cols: list of pd.Series to plot line graph
         - scatter_cols: list of pd.Series to plot scatter plot
@@ -770,7 +770,7 @@ class StockAnalyser():
         Paramter
         -------
         cols: col names to plot | text_box: string in text box to print |
-        showOption: 'show': show by plt.show, 'save': save graph without showing (suitable for env without GUI)
+        showOption: 'show': show by plt.show, 'save': save graph without showing 
         savedir: dir to save plot |
 
          """
@@ -877,8 +877,7 @@ class StockAnalyser():
             logger.info("break point dates: ")
             
             for ind, val in filtered.items():   # item is float
-                # print("type(item): ", type(item))
-                # print(item)
+
                 logger.info(ind.strftime("%Y-%m-%d"))
                 ax1.annotate("Break pt: "+ind.strftime("%Y-%m-%d")+", $"+"{:.2f}".format(val), (ind, val-annot_y_offset), fontsize=4, ha='left', va='top', color='darkgoldenrod')
 
@@ -888,11 +887,12 @@ class StockAnalyser():
         #plt.plot(self.stock_data['buttered Close T=20'], alpha=0.8, linewidth=1.5, label='buttered Close T=20', color='cyan')
         #plt.plot(self.stock_data['buttered Close T=60'], alpha=0.8, linewidth=1.5, label='buttered Close T=60', color='magenta')
         
-        ax1.fill_between(self.stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=self.stock_data['slope signal']>0, facecolor='palegreen', alpha=.15)
-        ax1.fill_between(self.stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=self.stock_data['slope signal']<0, facecolor='pink', alpha=.15)
-       
+        
+       ## shade green /red color as up/down trend by MACD signal
 
         if 'MACD' in self.stock_data and 'slope signal' in self.stock_data:
+            ax1.fill_between(self.stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=self.stock_data['slope signal']>0, facecolor='palegreen', alpha=.15)
+            ax1.fill_between(self.stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=self.stock_data['slope signal']<0, facecolor='pink', alpha=.15)
             ax2.plot(self.stock_data['MACD'], label='MACD', alpha=0.8, linewidth=1, color='indigo')
             ax2.plot(self.stock_data['signal'], label='signal', alpha=0.8, linewidth=1, color='darkorange')
             ax2.fill_between(self.stock_data.index, LOW_PLT_UPLIM, LOW_PLT_DOWNLIM, where=self.stock_data['slope signal']>0, facecolor='palegreen', alpha=.15)
@@ -906,8 +906,6 @@ class StockAnalyser():
         ax1.grid(which='major', color='lavender', linewidth=3)
         ax1.grid(which='minor', color='lavender', linewidth=3)
         
-    
- 
         fig.suptitle(plt_title)
         fig.legend()
 
@@ -1125,6 +1123,9 @@ def runner(tickers: str, start: str, end: str,
            extra_text_box:str='',
            graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6) :
     """
+
+    Depreciated!
+
     Parameter
 
     - method: options: 'ma', 'ema', 'dma', 'butter', 'close'|
@@ -1232,17 +1233,6 @@ def runner(tickers: str, start: str, end: str,
     
 
 
-def runner_polyfit(tickers: str, start: str, end: str,
-           smooth: bool=False, wind=10, smooth_ext=10,
-           ):
-    stock = StockAnalyser(tickers, start, end)
-    stock.set_smoothen_price_polyfit('close')
-    stock.set_extrema(interval=wind)
-    logger.debug("-- Stock Data --")
-    stock.print_stock_data()
-    logger.debug("-- Extrema --")
-    logger.debug(tabulate(stock.get_extrema(), headers='keys', tablefmt='psql', floatfmt=(None,".2f", None,  ".2%")))
-    #stock.plot_extrema(plt_title=f"{tickers}", annot=True)
     
 def trial_runner():
     stock=StockAnalyser()
@@ -1360,32 +1350,6 @@ if __name__ == "__main__":
                 bp_filter_uptrend=True, graph_showOption='save' )
 
     ## -- Example -- ##
-    ## E.g. Plot PDD 2022-10-20 to 2023-07-22, get extrema with EMA5
-    # runner('PDD', '2023-10-20', '2023-07-22', method='ema', T=5, showOption='save', graph_dir='../graph.png')
-
-    ## E.g. Plot NVDA 2022-10-20 to 2023-07-22, get extrema with EMA10
-    # runner('NVDA', '2022-10-20', '2023-07-22', method='ema', T=10)
-
-    ## E.g. Plot TSLA 2023-02-20 to 2023-07-22, get extrema with butterworth low pass filter with period=10 day
-    # runner('TSLA', '2023-02-20', '2023-07-22', method='butter', T=10)
-
+    ## To be Written
 
     
-    
-    ####　### ####
-    #runner_polyfit('NVDA', '2022-10-20', '2023-07-22',wind=10)
-    # stock=StockAnalyser('TSLA', '2023-01-20', '2023-07-22')
-    
-    # #stock.butter(10)
-    # stock.butter(10)
-    # stock.set_extrema('buttered Close T=10', window_dir='both')
-
-    # stock.plot_extrema(plt_title='TSLA 2023-01-20 to 2023-07-22: extrema with butter T=10')
-    
-    # stock.print_stock_data()
-
- 
-
-
-
-            
