@@ -508,8 +508,9 @@ class StockAnalyser():
         
     
     def set_breakpoint(self, 
-                       close_price: pd.Series, zz: pd.Series=None,
-                       trend_src: pd.Series=None,
+                       close_price: pd.Series, 
+                       trend_src: pd.Series,
+                       uptrend_src: str='other',
                        zzupthres: int=0.09, 
                        bp_filter_conv_drop: bool=True,
                        bp_filter_rising_peak: bool=True,
@@ -524,7 +525,6 @@ class StockAnalyser():
         uptrddays=[]
         checking_flag = 0
         try:
-            assert 'zz trend' in self.stock_data
             assert 'type' in self.stock_data
             assert 'p-b change' in self.stock_data
         except AssertionError:
@@ -534,7 +534,7 @@ class StockAnalyser():
         ## -- parameter -- ##
 
         incl_1st_btm = True
-        uptrend_src = 'other'     # uptend source: 'zz': zigzag, 'other': anysource
+
         
         ## -- flags -- ##
 
@@ -566,7 +566,7 @@ class StockAnalyser():
         i=0
         if uptrend_src=='zz':   # use zigzag indicator as uptrend source
             while i< self.data_len-2:
-                                
+                zz=self.stock_data['zigzag']              
                 if zz[i] ==-1:     # encounter big bottom
                     
                     
@@ -627,6 +627,7 @@ class StockAnalyser():
                 i+=1
 
         elif uptrend_src=='other':  # use other indicator as uptrend source, e.g. MACD or MACD signal
+            trend_src=self.stock_data['slope signal']
             i=0
             while i< self.data_len-2:
                 next_peak_offset=0  
@@ -967,6 +968,7 @@ class StockAnalyser():
     def default_analyser(self, tickers: str, start: str, end: str,
             method: str='', T: int=0, 
             window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
+            bp_trend_src: str='signal',
            bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
            extra_text_box:str='',
            graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6) ->pd.DataFrame:
@@ -1050,8 +1052,24 @@ class StockAnalyser():
         
 
         self.add_col_macd_group(self.stock_data['close'])
-        self.set_breakpoint(self.stock_data['close'], trend_src=self.stock_data['slope signal'],
-                            bp_filter_conv_drop=bp_filter_conv_drop, bp_filter_rising_peak=bp_filter_rising_peak)
+
+        if bp_trend_src=='signal':
+            trendsrc=self.stock_data['slope signal']
+            trend_src_str='other'
+
+        elif bp_trend_src=='zz':
+            trendsrc=None
+            trend_src_str='zz'
+        else:
+            raise Exception("invalid trend source")
+            
+        self.set_breakpoint(self.stock_data['close'], 
+                            trend_src=trendsrc,
+                            uptrend_src=trend_src_str,
+                            bp_filter_conv_drop=bp_filter_conv_drop, 
+                            bp_filter_rising_peak=bp_filter_rising_peak,
+                            bp_filter_uptrend=bp_filter_uptrend,
+                            )
         self.set_buy_point(self.stock_data['starred'])
 
 
@@ -1096,6 +1114,7 @@ def runner_analyser(tickers: str, start: str, end: str,
            method: str='', T: int=0, 
             window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
             macd_signal_T: int=9,
+            bp_trend_src: str='signal',
            bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
            extra_text_box:str='',
            graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6):
@@ -1104,6 +1123,7 @@ def runner_analyser(tickers: str, start: str, end: str,
                           method=method, T=T,
                         window_size=window_size, smooth_ext=smooth_ext,
                         zzupthres=zzupthres, zzdownthres=zzdownthres,
+                        bp_trend_src=bp_trend_src,
                         bp_filter_conv_drop=bp_filter_conv_drop,
                         bp_filter_rising_peak=bp_filter_rising_peak,
                         bp_filter_uptrend=bp_filter_uptrend,
@@ -1307,6 +1327,7 @@ if __name__ == "__main__":
                 logger.info(f"getting info of {item}")
                 runner_analyser(item, stockstart, stockend,
                         method='close', 
+                        
                         bp_filter_conv_drop=True, bp_filter_rising_peak=True,
                         figsize=graph_figsize, annotfont=4,
                         graph_dir=f'{graph_file_dir}_{item}.png',
@@ -1330,6 +1351,7 @@ if __name__ == "__main__":
             
             runner_analyser(item, stockstart, stockend,
                 method='close', 
+                bp_trend_src='signal',
                 bp_filter_conv_drop=True, bp_filter_rising_peak=True,
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=f'{graph_file_dir}_{item}.png',
