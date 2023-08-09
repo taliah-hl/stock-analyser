@@ -1248,8 +1248,7 @@ if __name__ == "__main__":
     logger.info("-- ****  NEW RUN START **** --")
 
 
-    trial_runner()
-    exit(1)
+
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--ticker', type=str, default=None)
