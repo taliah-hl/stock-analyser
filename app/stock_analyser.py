@@ -19,7 +19,7 @@ class DayType(enum.Enum):
     BUYPT=1
     SELLPT=2
     BREAKPT=3
-    NAN=0
+    NAN=0   #add peak, bottom
 
 
 class StockAnalyser():
@@ -46,6 +46,7 @@ class StockAnalyser():
         self.all_vertex= None
         self.peak_indexes=[]
         self.bottom_indexes=[]
+        self.buypt_dates=[]
 
 
     def download(self, tickers: str, start: str, end: str)->pd.DataFrame:
@@ -720,6 +721,8 @@ class StockAnalyser():
         for i in range(0, self.data_len):
             if source[i] ==1:
                 self.stock_data.iloc[i, col_doi] = DayType.BUYPT
+                self.buypt_dates.append(i)
+        
         return self.stock_data['day of interest']
     
     def plot_peak_bottom(self, extrema: pd.Series,
@@ -1134,7 +1137,7 @@ class StockAnalyser():
 
         logger.debug(f"-- Stock Data of {tickers} (after all set)--")
         self.print_stock_data()
-        logger.debug("number of price point:", len(self.get_stock_data()))
+        logger.debug(f"number of price point: {len(self.get_stock_data())}" )
 
         logger.debug(f"-- Extrema of {tickers} (after all set)--")
         logger.debug(tabulate(self.get_extrema(), headers='keys', tablefmt='psql', floatfmt=("", ".2f","g", ".2%",)))
