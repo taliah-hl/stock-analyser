@@ -1050,6 +1050,8 @@ class StockAnalyser():
     
         """
 
+    
+
         try:
             self.download(tickers, start, end)
         except Exception as err:
@@ -1058,6 +1060,8 @@ class StockAnalyser():
         logger.info(f"analysing stock: {tickers}...")
         if self.data_len < 27:
             logger.warning("number of trading days <=26, analysis may not be accurate")
+
+        logger.debug(f"config set:\nmethod={method}\tT={T}\nbp_trend_src={bp_trend_src}\tconv drop={bp_filter_conv_drop}\trise peak={bp_filter_rising_peak}")
 
         extra_col_name =[]
         smooth=False
