@@ -7,11 +7,12 @@ import yfinance as yf
 import math
 from tabulate import tabulate
 import time
-from datetime import date
+from datetime import date, timedelta, datetime
 import argparse
 import sys
 import enum
 import os
+import re
 
 ## custom import
 
@@ -28,8 +29,13 @@ class BuyStrategy(enum.Enum):
 
 class SellStrategy(enum.Enum):
     Default=0
-    Stop_loss =1
+    Trailing_stop =1
     Buy_and_hold=2
+    Profit_target=3
+    Fixed_stop_loss=4
+    Trailing_and_fixed_stoploss =5
+    TS_FSL_PT=5
+    Mix=10
 
 class StockAccount():
     def __init__(self, ticker: str, start: str, end: str,initial_capital: int):
@@ -45,17 +51,21 @@ class StockAccount():
         """
         TO BE IMPLEMENT
         """
-        self.txn = res
+        #self.txn = res
         return self.txn
     
     def print_txn(self):
         logger.debug(f"----  Transaction Table of {self.ticker}  ----")
         logger.debug(tabulate(self.txn, headers='keys', tablefmt='psql', floatfmt=".2f"))
 
-    def txn_to_csv(self, save_path:str=None):
+    def txn_to_csv(self, save_path:str=None, textbox: str=None):
         if save_path is None:
             save_path = f"../../back_test_result/{self.ticker}_{self.start}_{self.end}.csv"
+        else:
+            save_path = save_path+f"{self.ticker}_{self.start}_{self.end}.csv"
         self.txn.to_csv(save_path)
+        with open(save_path, 'a') as fio:
+            fio.write(textbox)
 
         logger.info(f"csv saved to {save_path}")
 
@@ -80,7 +90,7 @@ class StockAccount():
             logger.warning("no transaction, cannot get revenue, you may want to roll the ACC first.")
             return None
 
-    def cal_final_capial(self):
+    def cal_final_capital(self):
         if self.txn is not None:
             return self.txn['cash'][-1]
         else:
@@ -93,11 +103,13 @@ class BackTest():
     def __init__(self):
         pass
         self.buy_strategy: BuyStrategy=BuyStrategy.Uptrend_converging_bottom
-        self.sell_strategy: SellStrategy=SellStrategy.Stop_loss
+        self.sell_strategy: SellStrategy=SellStrategy.Trailing_stop
         self.sell_signal: str=''
         self.sell_signal: str=''
         self.stock_table=None
-        self.stop_loss_percent: float=0.05
+        self.trail_loss_percent: float=None
+        self.fixed_st: float=None
+        self.profit_target: float=None
         #self.stock: str=''
         #self.account: StockAccount
         self.position_size: float=1     # portion of capital to use in each buy action
@@ -106,16 +118,27 @@ class BackTest():
         self.buyDates: list     # list of str (date)
         self.sellDates: list     # list of str (date)
         self.actionDates: dict  # dict of list of str (date)
+        self.profit_target=float('inf')
 
 
     def set_buy_strategy(self, strategy):
         self.buy_strategy = strategy
 
 
-    def set_sell_strategy(self, strategy, percentage: float=0):
+    def set_sell_strategy(self, strategy, ts_percent: float=None, 
+                          profit_target: float=None, fixed_st: float=None):
         self.sell_strategy = strategy
-        if strategy==SellStrategy.Stop_loss:
-            self.stop_loss_percent = percentage
+
+        if strategy==SellStrategy.Trailing_stop:
+            
+            if pd.isna(ts_percent):
+                raise Exception("sell strategy selected as trailing stop, but trail stop percentage not provided!\n provide trail stop percentage in ts_percent in BackTest.set_sell_strategy()\nprogram exit.")
+                
+            self.trail_loss_percent = ts_percent
+        elif strategy==SellStrategy.TS_FSL_PT or strategy==SellStrategy.Trailing_and_fixed_stoploss:
+            self.trail_loss_percent = ts_percent
+            self.profit_target=profit_target
+            self.fixed_st=fixed_st
 
     def set_buy_signal(self):
         pass
@@ -151,7 +174,7 @@ class BackTest():
             )
             return stock
         
-    def sell(self, prev_row: dict, cur_row: dict, trigger_price: float, portion: float=1, )->dict:
+    def sell(self, prev_row: dict, cur_row: dict, trigger_price: float, portion: float=1, last_buy_date=None, trigger: str=None)->dict:
         """
         - portion: portion of holding to sell
 
@@ -167,6 +190,7 @@ class BackTest():
         cur_row['share'] = prev_row['share'] - sell_share
         cur_row['MV'] = cur_row['close price'] * cur_row['share']
         cur_row['cash'] = prev_row['cash'] + cur_row['txn amt']
+        cur_row['trigger'] = trigger
         return cur_row
     
     def buy(self, prev_row, cur_row: dict, share: int)->dict:
@@ -187,17 +211,34 @@ class BackTest():
         
 
         
-    def check_sell(self, strategy, prev_row: dict, cur_row: dict, latest_high: float, cur_price: float):
+    def check_sell(self, strategy, prev_row: dict, cur_row: dict, latest_high: float, cur_price: float, last_buy_date=None):
         """
             input: prev row
             return: cur row, bool: True=sold, False=not sold
         """
         
-        if strategy== SellStrategy.Stop_loss:
-            if cur_price < (latest_high * (1-self.stop_loss_percent)):
+        if strategy== SellStrategy.Trailing_stop:
+            if cur_price < (latest_high * (1-self.trail_loss_percent)):
                 # sell
-                cur_row = self.sell(prev_row, cur_row, trigger_price=latest_high * (1-self.stop_loss_percent))
+                cur_row = self.sell(prev_row, cur_row, trigger_price= math.floor(latest_high * (1-self.trail_loss_percent)*100)/100, trigger='trail stop')
                 return (cur_row, True)
+        elif strategy==SellStrategy.TS_FSL_PT or strategy==SellStrategy.Trailing_and_fixed_stoploss:
+            if (self.trail_loss_percent is not None 
+                and cur_price < (latest_high * (1-self.trail_loss_percent)) ):
+                cur_row = self.sell(prev_row, cur_row, trigger_price=math.floor(latest_high*(1-self.trail_loss_percent)*100)/100, trigger='trail stop')
+                return (cur_row, True)
+                
+            elif (self.fixed_st is not None 
+                  and cur_price <( (self._stock_table['close'][last_buy_date]) * (1-self.fixed_st))):
+                cur_row = self.sell(prev_row, cur_row, trigger_price=math.floor(self._stock_table['close'][last_buy_date] * (1-self.fixed_st)*100)/100, trigger='fixed ST')
+                return (cur_row, True)
+
+            elif ( self.profit_target is not None
+                  and cur_price >=  self._stock_table['close'][last_buy_date] * (1+self.profit_target)):
+                cur_row = self.sell(prev_row, cur_row, trigger_price=math.floor(self._stock_table['close'][last_buy_date] * (1+self.profit_target)*100)/100, trigger='profit target')
+                return (cur_row, True)
+
+            
             
         cur_row['cash']=prev_row['cash']
         cur_row['share'] = prev_row['share']
@@ -210,12 +251,17 @@ class BackTest():
 
     def roll(self, acc: StockAccount)->pd.DataFrame:
 
-        stock = self.set_stock(ticker=acc.ticker, start=acc.start, end=acc.end)
+        try:
+            stock = self.set_stock(ticker=acc.ticker, start=acc.start, end=acc.end)
+        except Exception as err:
+            logger.error(err)
+            return None
 
         
         # self.stock_table set after set fn
         txn_table=pd.DataFrame(index=self._stock_table.index, 
-                               columns=['cash', 'share','close price','MV', 'action','deal price', 'txn amt', 'total asset', 'latest high','+-'])
+                               columns=['cash', 'share','close price','MV', 'action',
+                                        'deal price', 'txn amt', 'total asset', 'latest high','+-', 'trigger'])
         
         cash_col=txn_table.columns.get_loc('cash')
         share_col=txn_table.columns.get_loc('share')
@@ -227,6 +273,7 @@ class BackTest():
         ass_col = txn_table.columns.get_loc('total asset')
         lh_col = txn_table.columns.get_loc('latest high')
         change_col = txn_table.columns.get_loc('+-')
+        trig_col = txn_table.columns.get_loc('trigger')
         
         txn_table['cash'] = acc.initial_capital
         txn_table['total asset'] = acc.initial_capital
@@ -238,6 +285,7 @@ class BackTest():
         txn_table['txn amt']=np.nan
         txn_table['latest high']=np.nan
         txn_table['+-'] = np.nan
+        txn_table['trigger'] = np.nan
 
         #print("len txn table")
         #print(len(txn_table))
@@ -267,10 +315,10 @@ class BackTest():
                 latest_high = max(latest_high, txn_table['close price'][idx])
                 txn_table.iloc[idx, lh_col] = latest_high
                 (txn_table.iloc[idx], is_sold) = self.check_sell(strategy=self.sell_strategy, prev_row=txn_table.iloc[idx-1].to_dict(), cur_row=txn_table.iloc[idx].to_dict(),
-                                        latest_high=latest_high, cur_price=txn_table['close price'][idx])
+                                        latest_high=latest_high, cur_price=txn_table['close price'][idx], last_buy_date=last_buy_date)
                 is_holding = not is_sold
                 if is_sold:
-                    txn_table.iloc[idx, change_col] = (txn_table['cash'][idx] - (txn_table['cash'][last_buy_date] + txn_table['txn amt'][last_buy_date]) ) / (txn_table['cash'][last_buy_date] + txn_table['txn amt'][last_buy_date])
+                    txn_table.iloc[idx, change_col] = (txn_table['deal price'][idx] - txn_table['deal price'][last_buy_date] ) / txn_table['deal price'][last_buy_date] 
 
                 if not is_holding:
                     #print("no holding today")
@@ -292,14 +340,18 @@ class BackTest():
                 #logger.debug("check buy triggered")
                 # buy with that day close price
 
-                share_num=math.floor(txn_table['cash'][idx-1] / txn_table['close price'][idx])
-                txn_table.iloc[idx] = self.buy(prev_row=txn_table.iloc[idx-1].to_dict(), 
-                                        cur_row=txn_table.iloc[idx].to_dict(),
-                                        share=share_num )
-                last_buy_date=idx
-                is_holding = True
-                latest_high=float('-inf') # reset latest high
-                
+                try:
+                    share_num=math.floor(txn_table['cash'][idx-1] / txn_table['close price'][idx])
+                    txn_table.iloc[idx] = self.buy(prev_row=txn_table.iloc[idx-1].to_dict(), 
+                                            cur_row=txn_table.iloc[idx].to_dict(),
+                                            share=share_num )
+                    last_buy_date=idx
+                    is_holding = True
+                    latest_high=txn_table['close price'][idx] # reset latest high
+                except OverflowError as err:
+                    logger.error(err)
+                    logger.error(f"at date={txn_table.index[idx]}, cash/close=infinity")
+
                 
             
             
@@ -332,7 +384,7 @@ class BackTest():
 
         return txn_table
         
-    def print_revenue(self, ac_list:list, total_revenue):
+    def print_revenue(self, ac_list:list, total_revenue, save_path:str=None, textbox: str=None):
         """
         input: list of acc
         all accs need to be roll first
@@ -342,7 +394,10 @@ class BackTest():
         """
         
         table=[]
-        
+        if save_path is None:
+            save_path = '../../all_revenue_.csv'
+        else:
+            save_path = save_path + 'all_revenue_.csv'
 
         for ac in ac_list:
             table.append({'stock': ac.ticker, 
@@ -357,32 +412,46 @@ class BackTest():
         revenue_table['buy strategy']  = self.buy_strategy
         revenue_table['sell strategy']  = self.sell_strategy
 
-        revenue_table.to_csv(f'../../back_test_result/all_revenue_.csv')
+        revenue_table.to_csv(save_path)
+        with open(save_path, 'a') as fio:
+            fio.write(textbox)
+        logger.info(f"overall revenue csv saved to {save_path}")
 
 
 
 
-def runner(tickers, start:str, end:str, capital:float):
+def runner(tickers, start:str, end:str, capital:float, 
+           sell_strategy, ts_percent: float=None, fixed_st: float=None, profit_target:  float=None,
+           buy_strategy=None,
+           csv_dir:str='../../', print_all_ac:bool=True)->float:
+    """
+    return 
+
+    overall revenue
+    """
 
     if isinstance(tickers, str):
         ac = StockAccount(tickers, start, end, capital)
         logger.info(f'---- **** Back Test of {tickers} stated **** ---')
         back_test = BackTest()
         back_test.set_buy_strategy(BuyStrategy.Uptrend_converging_bottom)
-        back_test.set_sell_strategy(SellStrategy.Stop_loss, 0.05)
+        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_st=fixed_st, profit_target=profit_target)
         ac.txn = back_test.roll(ac)
-        #ac.print_txn()
-        ac.txn_to_csv()
+        
+        if print_all_ac:
+            ac.print_txn()
+            ac.txn_to_csv(save_path=csv_dir, textbox=f'{tickers}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}')
         rev=ac.cal_revenue()
         logger.debug(f"revenue of {tickers}: {rev}")
         logger.info(f" Back Test of {tickers} done")
+        return rev
     
     
     elif isinstance(tickers, list):
 
         back_test = BackTest()
         back_test.set_buy_strategy(BuyStrategy.Uptrend_converging_bottom)
-        back_test.set_sell_strategy(SellStrategy.Stop_loss, 0.05)
+        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_st=fixed_st, profit_target=profit_target)
 
         acc_list=[]
         total_finl_cap=0
@@ -390,20 +459,87 @@ def runner(tickers, start:str, end:str, capital:float):
             ac = StockAccount(item, start, end, capital)
             logger.info(f'---- **** Back Test of {item} started **** ---')
             
-            ac.txn = back_test.roll(ac)
-            ac.print_txn()
-            ac.txn_to_csv()
+            try:
+                ac.txn = back_test.roll(ac)
+            except Exception as err:
+                logger.error(err)
+                continue
+            if print_all_ac and ac.txn is not None:
+                ac.print_txn()
+                ac.txn_to_csv(save_path=csv_dir, textbox=f'{item}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}')
             rev=ac.cal_revenue()
-            total_finl_cap += ac.cal_final_capial()
-            logger.info(f"revenue of {item}: {rev}")
-            logger.info(f" Back Test of {item} done")
+            try:
+                total_finl_cap += ac.cal_final_capital()
+                logger.info(f"revenue of {item}: {rev}")
+                logger.info(f" Back Test of {item} done")
+            except Exception as err:
+                logger.error(err)
+                continue
             acc_list.append(ac)
 
         final_rev = ( total_finl_cap - capital * len(tickers))/(capital * len(tickers))
         logger.info(f"total revenue of run: {final_rev}")
-        back_test.print_revenue(acc_list, final_rev)
+        back_test.print_revenue(acc_list, final_rev, save_path=csv_dir, textbox=f'trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}')
+        return final_rev
+
+def yearly_test():
+    
+    #stock_lst_file='../../hotstock100.txt'
+    res_save_dir='../../back_test_result/yearly_trail5%_100result.csv'
+
+    start_date = pd.Timestamp('2007-01-01')
+    end_date = pd.Timestamp('2023-07-02')
+    date_offset = pd.DateOffset(months=6)
+    
+    date_list = []
+    current_date = start_date
+
+    while current_date < end_date:
+        date_list.append(current_date)
+        current_date += date_offset
+
+    print(date_list)
+
+    
+    ts_percent=0.05
 
 
+    logger.info(f"stock list file got: {stock_lst_file}")
+    logger.info(f"yearly test, gap ={date_offset}, earliest={start_date}, latest={end_date}")
+    with open(stock_lst_file, 'r') as fio:
+        lines = fio.readlines()
+    
+    fiores = open(res_save_dir, 'w')
+    fiores.write(f'yearly test, gap ={date_offset}, earliest={start_date}, latest={end_date}\n')
+    fiores.write(f'param: trailinh stop: {ts_percent}')
+    fiores.write('stock in test: \n')
+    fiores.write(f'{lines}\n')
+    # write header
+    fiores.write(f"start month,end month,overall revenue\n")
+    for item in lines:
+        item=re.sub(r'\W+', "", item)
+
+        
+
+    to_write=''
+
+    for dt in date_list:
+        
+        enddt=dt+pd.DateOffset(months=12)
+        logger.info(f'processing start date: {dt}, end date: {enddt}')
+        
+        revenue = runner(lines, dt, enddt, 10000, SellStrategy.Trailing_stop, ts_percent=ts_percent,  
+                print_all_ac=False, csv_dir=csv_dir)
+        fiores.write(f'{dt},{enddt},{revenue}\n')
+
+        
+    fiores.close()
+
+    logger.info(f"csv result saved to {res_save_dir}")
+
+
+
+    
 
 if __name__ == "__main__":
     start = time.time()
@@ -429,14 +565,69 @@ if __name__ == "__main__":
     short_list=['nvda', 'nio', 'pdd']
 
     stock_lst_file='../../hotstock25.txt'
-    with open(stock_lst_file, 'r') as fio:
-            lines = fio.readlines()
 
-    for item in lines:
-            item=item.strip()
-    runner(lines, '2021-11-01', '2022-11-01', 50000)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--ticker','-t', help='stock symbol',type=str, default='NVDA')
+    parser.add_argument('--start','-s', help='start date',  type=str, default='2022-07-20')
+    parser.add_argument('--end', '-e', help='end date', type=str, default='2023-08-03')
+    parser.add_argument('--capital', '-c', help='initial captial', type=float, default=10000)
+
+    parser.add_argument('--buy', '-b', help='buy strategy, 1=conv drop', type=int, default=1)
+    parser.add_argument('--sell', '-p', help='sell strategy, number code same as class SellStrategy', type=int, default=5)
+
+    parser.add_argument('--stocklist_file', '-f', help='stock list file dir', type=str, default=None)
+    parser.add_argument('--csv_dir', '-v', help='csv folder dir (file name is pre-set)', type=str, default='../../')
+    parser.add_argument('--graph_dir', '-g',type=str, default='../../')  # no .png
+    parser.add_argument('--figsize', type=tuple, default=(40,20))
+    parser.add_argument('--figdpi', type=int, default=200)
+    args=parser.parse_args()
+
+    stockticker=args.ticker
+    try:
+        assert isinstance(stockticker, str)
+    except Exception:
+        pass
+    else:
+        stockticker=stockticker.upper()
+        logger.info(f"stock given in cmd prompt: {stockticker}")
+
+    stockstart = args.start
+    stockend = args.end
+    capital= args.capital
+    sells=args.sell
+    buys=args.buy
+    stock_lst_file = args.stocklist_file
+    graph_file_dir = args.graph_dir
+    graph_figsize=args.figsize
+    graph_dpi=args.figdpi
+    csv_dir=args.csv_dir
+
+    #yearly_test()
+    #end=time.time()
+    #logger.info(f"time taken for whole run: {end-start}")
+    #exit(0)
+
+    if stock_lst_file != None:
+        logger.info(f"stock list file got: {stock_lst_file}")
+        with open(stock_lst_file, 'r') as fio:
+            lines = fio.readlines()
+        
+        for item in lines:
+            item=re.sub(r'\W+', '', item)
+            
+        runner(lines, stockstart, stockend, capital, SellStrategy.Trailing_stop, ts_percent=0.05,  
+               print_all_ac=False, csv_dir=csv_dir)
+
+    ## run one stock from cmd
+    else:
+        runner(stockticker, stockstart, stockend, capital, SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,  
+               print_all_ac=True, csv_dir=csv_dir)
+
     end=time.time()
     logger.info(f"time taken for whole run: {end-start}")
+
+
         
 
 

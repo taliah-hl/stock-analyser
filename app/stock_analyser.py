@@ -1171,6 +1171,7 @@ class StockAnalyser():
 
             if graph_showOption == 'save':
                 plt.savefig(graph_dir)
+                plt.close()
                 logger.info(f"graph saved as {graph_dir}")
             else:
                 plt.show()
@@ -1258,11 +1259,11 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ticker', type=str, default=None)
-    parser.add_argument('--start',  type=str, default='2022-07-20')
-    parser.add_argument('--end',  type=str, default='2023-08-03')
-    parser.add_argument('--stocklist_file',type=str, default=None)
-    parser.add_argument('--graph_dir',type=str, default='../../')  # no .png
+    parser.add_argument('--ticker','-t', help='stock symbol',type=str, default=None)
+    parser.add_argument('--start', '-s', help='start date', type=str, default='')
+    parser.add_argument('--end', '-e', help='end date', type=str, default='')
+    parser.add_argument('--stocklist_file','-f', help='stock list file dir',type=str, default=None)
+    parser.add_argument('--graph_dir','-g', type=str, default='../../')  # no .png
     parser.add_argument('--figsize', type=tuple, default=(40,20))
     parser.add_argument('--figdpi', type=int, default=200)
     args=parser.parse_args()
@@ -1292,7 +1293,7 @@ if __name__ == "__main__":
     ## -- INFO -- ##
     ## RECOMMENDED graph dimension
     ## 1-3 months: figsize=(36,16), dpi=100-200, annotation fontsize=10
-    # 12 months up :  , dpi=250, annotation fontsize=4
+    # 12 months up :  figsize=(40,20), dpi=250, annotation fontsize=4
 
     ## Here to try the class
 
