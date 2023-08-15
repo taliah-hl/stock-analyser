@@ -525,7 +525,7 @@ class StockAnalyser():
         """
         return
         ---------
-        input df stock_data with col 'bp' added, which is break point of stock price
+        input df stock_data with col 'buy pt' added, which is break point of stock price
 
         Parameter 
         ---------
@@ -568,7 +568,7 @@ class StockAnalyser():
         POS_INF = float('inf')
 
 
-        stock_data['bp'] = np.nan
+        stock_data['buy pt'] = np.nan
         prev_pbc = POS_INF
         star_lst =[]
 
@@ -705,7 +705,7 @@ class StockAnalyser():
 
 
 
-        star_col = stock_data.columns.get_loc('bp')
+        star_col = stock_data.columns.get_loc('buy pt')
         for item in star_lst:
             stock_data.iloc[item, star_col]= 1
         
@@ -893,19 +893,19 @@ class StockAnalyser():
         ## PLOT BREAKPOINTS
         if to_plot_bp:
             try:
-                assert 'bp' in stock_data
+                assert 'buy pt' in stock_data
             except AssertionError:
                 logger.warning("breakpoint must be set before plot")
                 return
             
-            filtered= stock_data[stock_data['bp']>0]['close']
+            filtered= stock_data[stock_data['buy pt']>0]['close']
 
             annot_y_offset = min(stock_data['close'][-1]*0.01, 10)
             marker_y_offset = stock_data['close'][-1]*0.01
 
         
-            ax1.scatter(stock_data[stock_data['bp']>0].index, 
-                        stock_data[stock_data['bp']>0]['close']-annot_y_offset/2, 
+            ax1.scatter(stock_data[stock_data['buy pt']>0].index, 
+                        stock_data[stock_data['buy pt']>0]['close']-annot_y_offset/2, 
                         color='gold', s=self.SCATTER_MARKER_SIZE*2, marker=6, zorder=1)
             logger.info("break point dates: ")
             
@@ -1001,19 +1001,19 @@ class StockAnalyser():
     
     def plot_break_pt(self):
         try:
-            assert 'bp' in self.stock_data
+            assert 'buy pt' in self.stock_data
         except AssertionError:
             logger.warning("breakpoint must be set before plot")
             return
         
-        filtered= self.stock_data[self.stock_data['bp']>0]['close']
+        filtered= self.stock_data[self.stock_data['buy pt']>0]['close']
 
         annot_y_offset = min(self.stock_data['close'][-1]*0.01, 10)
         marker_y_offset = self.stock_data['close'][-1]*0.01
 
       
-        plt.scatter(self.stock_data[self.stock_data['bp']>0].index, 
-                    self.stock_data[self.stock_data['bp']>0]['close']-annot_y_offset/2, 
+        plt.scatter(self.stock_data[self.stock_data['buy pt']>0].index, 
+                    self.stock_data[self.stock_data['buy pt']>0]['close']-annot_y_offset/2, 
                     color='gold', s=1/self.data_len*6000, marker=6, zorder=1)
         logger.info("break point dates: ")
         
@@ -1046,7 +1046,7 @@ class StockAnalyser():
         - T: day range of taking ma/butterworth low pass filter |
         - window_size: window to locate extrema from approx. price |
         - extra_text_box: extra textbox to print on graph|
-        - graph_showOption: 'save', 'show', 'no'
+        - graph_showOption: 'save', 'show', 
     
         """
 
@@ -1136,7 +1136,7 @@ class StockAnalyser():
                             bp_filter_rising_peak=bp_filter_rising_peak,
                             bp_filter_uptrend=bp_filter_uptrend,
                             )
-        self.set_buy_point(self.stock_data['bp'])
+        self.set_buy_point(self.stock_data['buy pt'])
 
 
         logger.debug(f"-- Stock Data of {tickers} (after all set)--")
@@ -1176,6 +1176,12 @@ class StockAnalyser():
             else:
                 plt.show()
                 logger.info("graph shown")
+        else:
+            filtered= self.stock_data[self.stock_data['buy pt']>0]['close']
+
+            for ind, val in filtered.items():   # item is float
+
+                logger.info(ind.strftime("%Y-%m-%d"))
         return self.stock_data
         
     def wrong_fn(self):     #for testing
@@ -1250,7 +1256,7 @@ if __name__ == "__main__":
     )
     logger.add(
         f"../../stockAnalyser_{date.today()}_log.log",
-        level='DEBUG'
+        level='INFO'
 
     )
     logger.info("-- ****  NEW RUN START **** --")
@@ -1266,6 +1272,7 @@ if __name__ == "__main__":
     parser.add_argument('--graph_dir','-g', type=str, default='../../')  # no .png
     parser.add_argument('--figsize', type=tuple, default=(40,20))
     parser.add_argument('--figdpi', type=int, default=200)
+    parser.add_argument('--showopt', '-o', help='graph show option: \'save\', \'show\', \'no\'', type=str, default='save')
     args=parser.parse_args()
 
 
@@ -1285,6 +1292,7 @@ if __name__ == "__main__":
     graph_file_dir = args.graph_dir
     graph_figsize=args.figsize
     graph_dpi=args.figdpi
+    graph_show_opt = args.showopt
 
     
 
@@ -1317,7 +1325,7 @@ if __name__ == "__main__":
                         bp_filter_conv_drop=True, bp_filter_rising_peak=True,
                         figsize=graph_figsize, annotfont=4,
                         graph_dir=f'{graph_file_dir}_{item}.png',
-                        bp_filter_uptrend=True, graph_showOption='save'
+                        bp_filter_uptrend=True, graph_showOption=graph_show_opt
                             )
                 logger.info(f"{item} analyse done")
             
@@ -1343,7 +1351,7 @@ if __name__ == "__main__":
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=f'{graph_file_dir}_{item}.png',
                 extra_text_box='bear market 2021 Oct - 2022 Oct, trend: MACD signal slope>0',
-                bp_filter_uptrend=True, graph_showOption='save' )
+                bp_filter_uptrend=True, graph_showOption=graph_show_opt )
             logger.info(f"{item} analyse done")
         
         logger.info(f"{item} analyse done")
@@ -1357,7 +1365,7 @@ if __name__ == "__main__":
                 bp_filter_conv_drop=True, bp_filter_rising_peak=True,
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=f'{graph_file_dir}.png',
-                bp_filter_uptrend=True, graph_showOption='save' )
+                bp_filter_uptrend=True, graph_showOption=graph_show_opt )
 
     ## -- Example -- ##
     ## To be Written
