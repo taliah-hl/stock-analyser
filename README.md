@@ -77,14 +77,24 @@ python stock_analyser.py --start=2022-08-01 --end=2023-08-01 --graph_dir=../dir/
 
 **main runner method**
 ```
-def runner_analyser(tickers: str, start: str, end: str, 
+def default_analyser_runner(tickers: str, start: str, end: str, 
            method: str='', T: int=0, 
             window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
             macd_signal_T: int=9,
+            bp_trend_src: str='signal',
            bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
            extra_text_box:str='',
-           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6)
-  ->pd.DataFrame
+           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6):
+   
+
+  def default_analyser(self, tickers: str, start: str, end: str,
+            method: str='', T: int=0, 
+            window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
+            bp_trend_src: str='signal',
+           bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
+           extra_text_box:str='',
+           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6) ->pd.DataFrame:
+
 
 ```
 return: pd.Dataframe of stock information with peak, bottom, breakpoint etc
@@ -95,6 +105,7 @@ Parameter of `runner_analyser`
 - `T`: period of moving average if method set to 'ma', 'ema' or any kind with period required (no effect if method set to 'close')
 - `window_size`: window size to locate extrema from price source specified in `method` (no effect if method set to 'close')
 - `zzupthres`, `zzdownthres`: up/down threshold of zigzag indicator
+- `bp_trend_src`:  source of uptrend signal, 'zz': zigzag indicator, 'signal': MACD signal
 - `bp_filter_conv_drop`: to apply converging bottom filter or not when finding breakpoint
 - `bp_filter_rising_peak`: to apply rising peak filter or not when finding breakpoint
 - `bp_filter_uptrend`: to apply uptrend detected filter or not when finding breakpoint (only have effect if trend source is zigzag)
@@ -109,7 +120,7 @@ Parameter of `runner_analyser`
 
 ### Example: using `runner_analyser`
 
-**E.g. 1**: PDD, 12 months plot extrema from close price, find breakpoint with converging drop filter and rising peak filter applied
+**E.g. 1**: PDD, 12 months plot extrema from close price, find breakpoint with converging drop filter and rising peak filter applied, use MACD Signal line as uptrend signal
 
 ```
 stock = StockAnalyser()   # init class
@@ -118,8 +129,27 @@ result_df = stock.default_analyser(
     start='2022-08-01', 
     end='2023-08-01',
     method='close', 
+    bp_trend_src='signal',
     bp_filter_conv_drop=True, 
     bp_filter_rising_peak=True,
+    graph_showOption='save'
+)
+
+```
+
+**E.g. 2**: AMD, 12 months plot extrema from ema9, window size set as 5, find breakpoint with converging drop filter=True, rising peak filter=False, use zigzag indicator as uptrend signal
+
+```
+stock = StockAnalyser()   # init class
+result_df = stock.default_analyser(
+    tickers='AMD', 
+    start='2022-08-01', 
+    end='2023-08-01',
+    method='ema', T=9, window_size=5,
+    bp_trend_src='zz',
+    bp_filter_conv_drop=True, 
+    bp_filter_rising_peak=False,
+    bp_filter_uptrend=True,
     graph_showOption='save'
 )
 
@@ -138,6 +168,9 @@ result of plotting extrema from different price source:
 - linear convolution with np.blackman
 
 detail discussion of pros and cons of different techniques see `technique_and_theory.md`
+
+## Test
+pytest cliet: app/stock_analyser.py
 
 ## 2021 Version
 ---
