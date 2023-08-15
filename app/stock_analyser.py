@@ -1456,6 +1456,12 @@ class StockAnalyser():
             else:
                 plt.show()
                 logger.info("graph shown")
+
+        else:
+            filtered= self.stock_data[self.stock_data['buy pt']>0]['close']
+            for ind, val in filtered.items():   # item is float
+                logger.info(ind.strftime("%Y-%m-%d"))
+                
         return self.stock_data
         
     def wrong_fn(self):     #for testing
@@ -1533,7 +1539,7 @@ if __name__ == "__main__":
     )
     logger.add(
         f"../../stockAnalyser_{date.today()}_log.log",
-        level='DEBUG'
+        level='INFO'
 
     )
     logger.info("-- ****  NEW RUN START **** --")
@@ -1549,6 +1555,7 @@ if __name__ == "__main__":
     parser.add_argument('--graph_dir','-g', type=str, default='../../')  # no .png
     parser.add_argument('--figsize', type=tuple, default=(40,20))
     parser.add_argument('--figdpi', type=int, default=200)
+    parser.add_argument('--showopt', '-o', help='graph show option: \'save\', \'show\', \'no\'', type=str, default='save')
     args=parser.parse_args()
 
 
@@ -1568,7 +1575,7 @@ if __name__ == "__main__":
     graph_file_dir = args.graph_dir
     graph_figsize=args.figsize
     graph_dpi=args.figdpi
-
+    graph_show_opt = args.showopt
     
 
     allow_direct_run_flag = False
@@ -1600,7 +1607,7 @@ if __name__ == "__main__":
                         bp_filter_conv_drop=True, bp_filter_rising_peak=True,
                         figsize=graph_figsize, annotfont=4,
                         graph_dir=f'{graph_file_dir}_{item}.png',
-                        bp_filter_uptrend=True, graph_showOption='save'
+                        bp_filter_uptrend=True, graph_showOption=graph_show_opt
                             )
                 logger.info(f"{item} analyse done")
             
@@ -1621,12 +1628,12 @@ if __name__ == "__main__":
             
             default_analyser_runner(item, stockstart, stockend,
                 method='close', 
-                trend_col_name='signal',
+                trend_col_name='slope signal',
                 bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak},
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=f'{graph_file_dir}_{item}.png',
                 extra_text_box='',
-                bp_filter_uptrend=True, graph_showOption='save' )
+                bp_filter_uptrend=True, graph_showOption=graph_show_opt )
             logger.info(f"{item} analyse done")
         
         logger.info(f"{item} analyse done")
