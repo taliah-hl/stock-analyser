@@ -54,6 +54,7 @@ class StockAnalyser():
         self.peak_indexes=[]
         self.bottom_indexes=[]
         self.buypt_dates=[]
+        self.zzthres=0.09
 
 
     def download(self, tickers: str, start: str, end: str)->pd.DataFrame:
@@ -506,6 +507,7 @@ class StockAnalyser():
 
 
     def set_zigizag_trend(self, src_data: pd.Series, upthres: float=0.09, downthres: float=0.09) -> None:
+        self.zzthres = upthres
         self.stock_data['zigzag'] = np.nan
         self.stock_data['zigzag'] = zz.peak_valley_pivots(src_data, upthres, -downthres)
         self.stock_data.iloc[-1, self.stock_data.columns.get_loc('zigzag')] = (-1)* self.stock_data[self.stock_data['zigzag'] !=0]['zigzag'][-2]
@@ -541,13 +543,13 @@ class StockAnalyser():
         for i in range(0, self.data_len-1):
             if self.stock_data['zigzag'][i]==1:
                 cur_big_btm = self.stock_data['close'][i]
-            if (self.stock_data['type'] == -1 
-                and self.stock_data['zz trend']==1 
-                and self.stock_data['close'] > cur_big_btm*(1+upthres)):
-                self.stock_data.iloc[col_d, i] = True
+            if (self.stock_data['type'][i] == -1 
+                and self.stock_data['zz trend'][i]==1 
+                and self.stock_data['close'][i] > cur_big_btm*(1+upthres)):
+                self.stock_data.iloc[i, col_d] = True
         return self.stock_data['zz uptrend detected']
     
-    def _is_uptrend(self, row: int, trend_col_name: str=None, zz_thres: float=None)->bool:
+    def _is_uptrend(self, row: int, trend_col_name: str=None, zz_thres: float=0.09)->bool:
         """
         return 
 
@@ -568,7 +570,7 @@ class StockAnalyser():
     
 
 
-    def _get_conv_drop_rise_peak_list(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None):
+    def _get_conv_drop_rise_peak_list(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None, zzupthres: float=0.09):
         
         """
         return: list of index
@@ -593,7 +595,7 @@ class StockAnalyser():
         i=0
         while i+1 < self.data_len-1:
             next_peak_offset=0
-            if self._is_uptrend(i, trend_col_name) and self.stock_data['type'][i] ==-1 :
+            if self._is_uptrend(i, trend_col_name, zzupthres) and self.stock_data['type'][i] ==-1 :
                 l =0
                 while self.stock_data['type'][i+l] !=1:
                     if i+l-1 >=0:
@@ -610,7 +612,7 @@ class StockAnalyser():
                 
                 rise_back_offset=0
                 k =0
-                while self._is_uptrend(i+k, trend_col_name):
+                while self._is_uptrend(i+k, trend_col_name, zzupthres):
                     if self.stock_data['close'][i+k] >= prev_peak: # record closest date rise back to prev peak
                         if not rise_back_flag:
                             rise_back_offset = k
@@ -774,7 +776,7 @@ class StockAnalyser():
         # only check those points for other filters to save time
 
         if conv_filter or rp_filter:    
-            conv_drop_rise_peak_list = self._get_conv_drop_rise_peak_list(conv_filter, rp_filter, trend_col_name)
+            conv_drop_rise_peak_list = self._get_conv_drop_rise_peak_list(conv_filter, rp_filter, trend_col_name, zz_thres)
             for idx in conv_drop_rise_peak_list:
 
                 if (   ( not sma_abv_filter or self.is_ma_above(idx, ma_short, ma_long))
@@ -790,7 +792,7 @@ class StockAnalyser():
         else:
             for idx in range(0, self.data_len):
                 if (    
-                        (not uptr_filter or self._is_uptrend(idx, trend_col_name))
+                        (not uptr_filter or self._is_uptrend(idx, trend_col_name, zz_thres))
                     and (not sma_abv_filter or self.is_ma_above(idx, ma_short, ma_long))
                     and (not rsi_abv_filter or self.is_rsi_above(idx, rsi_thres))
                     ):
@@ -1415,8 +1417,10 @@ class StockAnalyser():
 
         self._set_breakpoint( trend_col_name=trend_col_name,
                         bpfilters=bp_filters,
+                        zz_thres=zzupthres,
                              )
         self.set_buy_point(self.stock_data['buy pt'])
+ 
 
 
         logger.debug(f"-- Stock Data of {tickers} (after all set)--")
@@ -1539,7 +1543,7 @@ if __name__ == "__main__":
     )
     logger.add(
         f"../../stockAnalyser_{date.today()}_log.log",
-        level='INFO'
+        level='DEBUG'
 
     )
     logger.info("-- ****  NEW RUN START **** --")
@@ -1575,7 +1579,7 @@ if __name__ == "__main__":
     graph_file_dir = args.graph_dir
     graph_figsize=args.figsize
     graph_dpi=args.figdpi
-    graph_show_opt = args.showopt
+    graph_show_opt = str(args.showopt).strip()
     
 
     allow_direct_run_flag = False
@@ -1628,8 +1632,8 @@ if __name__ == "__main__":
             
             default_analyser_runner(item, stockstart, stockend,
                 method='close', 
-                trend_col_name='slope signal',
-                bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak},
+
+                bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=f'{graph_file_dir}_{item}.png',
                 extra_text_box='',
@@ -1644,10 +1648,11 @@ if __name__ == "__main__":
 
         default_analyser_runner(stockticker, stockstart, stockend,
                 method='close', 
+
                 bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak},
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=f'{graph_file_dir}.png',
-                bp_filter_uptrend=True, graph_showOption='save' )
+                bp_filter_uptrend=True, graph_showOption=graph_show_opt )
 
     ## -- Example -- ##
     ## To be Written
