@@ -18,6 +18,7 @@ import re
 
 import stock_analyser as sa
 
+
 class Action(enum.Enum):
     BUY=1
     SELL=2
@@ -511,7 +512,7 @@ def yearly_test():
     
     fiores = open(res_save_dir, 'w')
     fiores.write(f'yearly test, gap ={date_offset}, earliest={start_date}, latest={end_date}\n')
-    fiores.write(f'param: trailinh stop: {ts_percent}')
+    fiores.write(f'param: trailing stop: {ts_percent}')
     fiores.write('stock in test: \n')
     fiores.write(f'{lines}\n')
     # write header
@@ -564,7 +565,7 @@ if __name__ == "__main__":
     
     short_list=['nvda', 'nio', 'pdd']
 
-    stock_lst_file='../../hotstock25.txt'
+    
 
 
     parser = argparse.ArgumentParser()
@@ -577,7 +578,7 @@ if __name__ == "__main__":
     parser.add_argument('--sell', '-p', help='sell strategy, number code same as class SellStrategy', type=int, default=5)
 
     parser.add_argument('--stocklist_file', '-f', help='stock list file dir', type=str, default=None)
-    parser.add_argument('--csv_dir', '-v', help='csv folder dir (file name is pre-set)', type=str, default='../../')
+    parser.add_argument('--csv_dir', '-v', help='csv folder dir (file name is pre-set), default=../../', type=str, default='../../')
     parser.add_argument('--graph_dir', '-g',type=str, default='../../')  # no .png
     parser.add_argument('--figsize', type=tuple, default=(40,20))
     parser.add_argument('--figdpi', type=int, default=200)
