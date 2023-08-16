@@ -151,7 +151,7 @@ class BackTest():
                   peak_btm_src: str='close', T:int=0,
                   bp_trend_src: str='signal',
                    extra_text_box:str='',
-                    graph_showOption: str='no', 
+                    graph_showOption: str='save', 
                     graph_dir: str='../../stock.png', 
                     figsize: tuple=(36,24), 
                     annotfont: float=6
