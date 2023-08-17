@@ -61,9 +61,9 @@ class StockAccount():
 
     def txn_to_csv(self, save_path:str=None, textbox: str=None):
         if save_path is None:
-            save_path = f"../../back_test_result/{self.ticker}_{self.start}_{self.end}.csv"
+            save_path = f"../../back_test_result/roll_result_{self.ticker}_{self.start}_{self.end}.csv"
         else:
-            save_path = save_path+f"{self.ticker}_{self.start}_{self.end}.csv"
+            save_path = save_path+f"roll_result_{self.ticker}_{self.start}_{self.end}.csv"
         self.txn.to_csv(save_path)
         with open(save_path, 'a') as fio:
             fio.write(textbox)
@@ -120,10 +120,12 @@ class BackTest():
         self.sellDates: list     # list of str (date)
         self.actionDates: dict  # dict of list of str (date)
         self.profit_target=float('inf')
+        self.bp_filters=set()
 
 
-    def set_buy_strategy(self, strategy):
+    def set_buy_strategy(self, strategy, buypt_filters: set=set()):
         self.buy_strategy = strategy
+        self.bp_filters = buypt_filters
 
 
     def set_sell_strategy(self, strategy, ts_percent: float=None, 
@@ -149,29 +151,41 @@ class BackTest():
 
     def set_stock(self, ticker: str, start: str, end: str, 
                   peak_btm_src: str='close', T:int=0,
-                  bp_trend_src: str='signal',
+                  window_size=10, smooth_ext=10,
+                  trend_col_name: str='slope signal',
+                  bp_filters:set=set(),
+                  ma_short_list: list=[], ma_long_list=[],
+                  plot_ma: list=[],
                    extra_text_box:str='',
-                    graph_showOption: str='no', 
-                    graph_dir: str='../../stock.png', 
+                    graph_showOption: str='save', 
+                    graph_dir: str=None, 
                     figsize: tuple=(36,24), 
-                    annotfont: float=6
+                    annotfont: float=4,
+                    csv_dir: str=None
                   )->sa.StockAnalyser:
         """
             init stock using StockAnalyser.default_analyser
         """
         stock = sa.StockAnalyser()
+        if not bp_filters:
+            bp_filters = self.bp_filters
+        if graph_dir is None:
+            graph_dir=f'../../{ticker}_{start}_{end}'
 
         if self.buy_strategy == BuyStrategy.Uptrend_converging_bottom:
 
             self._stock_table = stock.default_analyser(
                 tickers=ticker, start=start, end=end,
                 method=peak_btm_src, T=T,
-                bp_trend_src=bp_trend_src,
-                bp_filter_conv_drop=True, bp_filter_rising_peak=True,
+                trend_col_name=trend_col_name,
+                ma_short_list=ma_short_list, ma_long_list=ma_long_list,
+                plot_ma=plot_ma,
+                bp_filters=bp_filters,
                 extra_text_box=extra_text_box,
                 graph_showOption=graph_showOption,
                 graph_dir=graph_dir, 
-                figsize=figsize, annotfont=annotfont
+                figsize=figsize, annotfont=annotfont,
+                csv_dir=csv_dir
             )
             return stock
         
@@ -250,10 +264,28 @@ class BackTest():
 
 
 
-    def roll(self, acc: StockAccount)->pd.DataFrame:
+    def roll(self, acc: StockAccount,
+              method: str='', T: int=0, 
+            window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
+            trend_col_name: str='slope signal',
+           bp_filters:set=set(),
+           ma_short_list: list=[], ma_long_list=[],
+           plot_ma: list=[],
+           extra_text_box:str='',
+           graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
+           csv_dir: str=None )->pd.DataFrame:
 
         try:
-            stock = self.set_stock(ticker=acc.ticker, start=acc.start, end=acc.end)
+            stock = self.set_stock(ticker=acc.ticker, start=acc.start, end=acc.end,
+                                   trend_col_name=trend_col_name,
+                                   bp_filters=bp_filters,
+                                   ma_short_list=ma_short_list, ma_long_list=ma_long_list,
+                                   plot_ma=plot_ma,
+                                   extra_text_box=extra_text_box,
+                                   graph_showOption=graph_showOption, graph_dir=graph_dir,
+                                   figsize=figsize, annotfont=annotfont, 
+                                   csv_dir=csv_dir
+                                   )
         except Exception as err:
             logger.error(err)
             return None
@@ -424,6 +456,11 @@ class BackTest():
 def runner(tickers, start:str, end:str, capital:float, 
            sell_strategy, ts_percent: float=None, fixed_st: float=None, profit_target:  float=None,
            buy_strategy=None,
+           trend_col_name: str='slope signal',
+           bp_filters: set=set(),
+           ma_short_list: list=[], ma_long_list=[],
+           plot_ma: list=[],
+           graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
            csv_dir:str='../../', print_all_ac:bool=True)->float:
     """
     return 
@@ -435,14 +472,24 @@ def runner(tickers, start:str, end:str, capital:float,
         ac = StockAccount(tickers, start, end, capital)
         logger.info(f'---- **** Back Test of {tickers} stated **** ---')
         back_test = BackTest()
-        back_test.set_buy_strategy(BuyStrategy.Uptrend_converging_bottom)
+        back_test.set_buy_strategy(BuyStrategy.Uptrend_converging_bottom, bp_filters)
         back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_st=fixed_st, profit_target=profit_target)
-        ac.txn = back_test.roll(ac)
+        ac.txn = back_test.roll(ac,
+                               trend_col_name=trend_col_name,
+                                bp_filters=bp_filters,
+                                ma_short_list=ma_short_list, ma_long_list=ma_long_list,
+                                plot_ma=plot_ma,
+                                graph_showOption=graph_showOption,
+                                graph_dir=graph_dir, figsize=figsize, annotfont=annotfont,
+                                csv_dir=csv_dir
+
+                                  )
         
+        rev=ac.cal_revenue()
         if print_all_ac:
             ac.print_txn()
-            ac.txn_to_csv(save_path=csv_dir, textbox=f'{tickers}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}')
-        rev=ac.cal_revenue()
+            ac.txn_to_csv(save_path=csv_dir, textbox=f'{tickers}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}\nrevenue: {rev}')
+        
         logger.debug(f"revenue of {tickers}: {rev}")
         logger.info(f" Back Test of {tickers} done")
         return rev
@@ -451,7 +498,7 @@ def runner(tickers, start:str, end:str, capital:float,
     elif isinstance(tickers, list):
 
         back_test = BackTest()
-        back_test.set_buy_strategy(BuyStrategy.Uptrend_converging_bottom)
+        back_test.set_buy_strategy(BuyStrategy.Uptrend_converging_bottom, bp_filters)
         back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_st=fixed_st, profit_target=profit_target)
 
         acc_list=[]
@@ -461,14 +508,24 @@ def runner(tickers, start:str, end:str, capital:float,
             logger.info(f'---- **** Back Test of {item} started **** ---')
             
             try:
-                ac.txn = back_test.roll(ac)
+                ac.txn = back_test.roll(ac,
+                               trend_col_name=trend_col_name,
+                                bp_filters=bp_filters,
+                                ma_short_list=ma_short_list, ma_long_list=ma_long_list,
+                                plot_ma=plot_ma,
+                                graph_showOption=graph_showOption,
+                                graph_dir=graph_dir, figsize=figsize, annotfont=annotfont,
+                                csv_dir=csv_dir
+
+                                  )
             except Exception as err:
                 logger.error(err)
                 continue
+            rev=ac.cal_revenue()
             if print_all_ac and ac.txn is not None:
                 ac.print_txn()
-                ac.txn_to_csv(save_path=csv_dir, textbox=f'{item}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}')
-            rev=ac.cal_revenue()
+                ac.txn_to_csv(save_path=csv_dir, textbox=f'{item}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}\nrevenue: {rev}')
+            
             try:
                 total_finl_cap += ac.cal_final_capital()
                 logger.info(f"revenue of {item}: {rev}")
@@ -579,9 +636,10 @@ if __name__ == "__main__":
 
     parser.add_argument('--stocklist_file', '-f', help='stock list file dir', type=str, default=None)
     parser.add_argument('--csv_dir', '-v', help='csv folder dir (file name is pre-set), default=../../', type=str, default='../../')
-    parser.add_argument('--graph_dir', '-g',type=str, default='../../')  # no .png
+    parser.add_argument('--graph_dir', '-g',type=str, default='../../untitled')  # no .png
     parser.add_argument('--figsize', type=tuple, default=(40,20))
     parser.add_argument('--figdpi', type=int, default=200)
+    parser.add_argument('--showopt', '-o', help='graph show option: \'save\', \'show\', \'no\'', type=str, default='save')
     args=parser.parse_args()
 
     stockticker=args.ticker
@@ -602,6 +660,7 @@ if __name__ == "__main__":
     graph_file_dir = args.graph_dir
     graph_figsize=args.figsize
     graph_dpi=args.figdpi
+    graph_show_opt=args.showopt
     csv_dir=args.csv_dir
 
     #yearly_test()
@@ -617,19 +676,36 @@ if __name__ == "__main__":
         for item in lines:
             item=re.sub(r'\W+', '', item)
             
-        runner(lines, stockstart, stockend, capital, SellStrategy.Trailing_stop, ts_percent=0.05,  
+        runner(lines, stockstart, stockend, capital, 
+               SellStrategy.Trailing_stop, ts_percent=0.05,  
+               bp_filters={sa.BuyptFilter.Converging_drop, sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.SMA_short_above_long},
+                ma_short_list=[50,3],
+                ma_long_list=[200,15],
+                graph_showOption='no',
                print_all_ac=False, csv_dir=csv_dir)
 
     ## run one stock from cmd
     else:
-        runner(stockticker, stockstart, stockend, capital, SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,  
+        runner(stockticker, stockstart, stockend, capital, 
+               SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
+               bp_filters={sa.BuyptFilter.Converging_drop, sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.SMA_short_above_long},
+                ma_short_list=[3],
+                ma_long_list=[9],
+                graph_showOption='save',
+                graph_dir=graph_file_dir,
                print_all_ac=True, csv_dir=csv_dir)
 
     end=time.time()
     logger.info(f"time taken for whole run: {end-start}")
 
 
-        
+## EXample 
+# python backtest.py -s=2022-08-01 -e=2023-08-16 -t=tsm -c=10000 -v='../../back_test_result/'
+
+## save graph and save roll result csv
+# python backtest.py -s=2022-08-01 -e=2023-08-16 -t=pdd -c=10000 -o=no -v=../../back_test_result/
+# python backtest.py -s=2022-08-01 -e=2023-08-16 -t=pdd -c=10000 -o=save -v=../../back_test_result/ -g=../../PDD
+    
 
 
 

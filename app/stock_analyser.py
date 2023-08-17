@@ -6,14 +6,16 @@ import pandas as pd
 from scipy.signal import argrelextrema, butter,filtfilt
 from matplotlib import pyplot as plt
 import yfinance as yf
+import pandas_market_calendars as mcal
 import math
 from tabulate import tabulate
 import zigzag as zz
 import time
-from datetime import date
+from datetime import date, timedelta
 import argparse
 import sys
 import enum
+import re
 
 class DayType(enum.Enum):
     BUYPT=1
@@ -21,6 +23,13 @@ class DayType(enum.Enum):
     BREAKPT=3
     NAN=0   #add peak, bottom
 
+class BuyptFilter(enum.Enum):
+    # buy point filters
+    In_uptrend = 1
+    Converging_drop = 2
+    Rising_peak = 3
+    SMA_short_above_long = 4
+    RSI_over =5
 
 class StockAnalyser():
 
@@ -34,8 +43,11 @@ class StockAnalyser():
     def __init__(self):
 
         self.tickers= None
-        self.start_date = None
-        self.end_date = None
+        self.start = None
+        self.pre_start=None # start day to calculate longest required MA
+        self.close_price = None # close price start from pre_start
+        self.actual_start_inx = None    # idx of first business day after user specified start day
+        self.end = None
         self.stock_data = None
         self.smooth_data_N = 10
         self.find_extrema_interval = 5
@@ -47,16 +59,32 @@ class StockAnalyser():
         self.peak_indexes=[]
         self.bottom_indexes=[]
         self.buypt_dates=[]
+        self.zzthres=0.09
 
+    def next_trading_day(self, date)->pd.Timestamp:
 
-    def download(self, tickers: str, start: str, end: str)->pd.DataFrame:
+        date = pd.to_datetime(date)
+        nyse = mcal.get_calendar('NYSE')
+        end = date + timedelta(5)
+        days = nyse.valid_days(start_date=date, end_date=end)
+        return days[0].tz_localize(None)
+
+    def download(self, tickers: str, start: str, end: str, pre_start: str=None)->pd.DataFrame:
         # Load stock info
-        
-        stock_info = yf.download(tickers, start=start, end=end)
+        if pre_start is not None:
+            stock_info = yf.download(tickers, start=pre_start, end=end)
+        else:
+            stock_info = yf.download(tickers, start=start, end=end)
         self.tickers=tickers
-        self.start_date = start
-        self.end_date = end
-        self.stock_data = pd.DataFrame(stock_info['Close']).rename(columns={'Close':'close'})
+        self.start=start
+        actual_start = self.next_trading_day(start)
+        self.end = end
+        self.close_price =  pd.DataFrame(stock_info['Close']).rename(columns={'Close':'close'})
+
+
+        self.actual_start_inx = self.close_price.index.get_loc(actual_start)
+        self.stock_data = pd.DataFrame(self.close_price[self.actual_start_inx:], index=self.close_price.index[self.actual_start_inx:])
+        
         self.data_len = len(self.stock_data)
        
 
@@ -95,6 +123,11 @@ class StockAnalyser():
                 fio.write(tabulate(self.stock_data, headers='keys', tablefmt='psql', floatfmt=("", ".2f",".2f", "g",".2%", "g", "g", )))
             logger.info(f"stock_data wrote to {file_name}")
     
+    def stock_data_to_csv(self, csv_dir: str='../../'):
+        csv_dir = csv_dir+f"stock_data_{self.tickers}_{self.start}_{self.end}.csv"
+        self.stock_data.to_csv(csv_dir)
+        logger.info(f"csv saved to {csv_dir}")
+
     def get_peaks(self)-> pd.DataFrame:
         """
         Return: DataFrame of peaks with date
@@ -128,7 +161,20 @@ class StockAnalyser():
         """
         return pd.DataFrame(self.extrema)
     
-    def add_column_ma(self,  src_data: pd.Series, mode: str='ma', period: int=9)->pd.Series:
+    def get_col(self, col_name: str)->pd.Series:
+        """
+        return self.stock_data[col_nmae]
+        """
+        return self.stock_data[col_name]
+
+    def get_all_col_name(self):
+        """
+        return list of str of all col in self.stock_data
+        """
+        return self.stock_data.columns.tolist()
+    
+    
+    def add_column_ma(self,  src_data: pd.Series=None, mode: str='ma', period: int=9)->pd.Series:
         """
         add a column of moving average (MA) to stock_data
         return: ma
@@ -136,32 +182,43 @@ class StockAnalyser():
         -----
         - src_data: pd.Series of source stock price to cal ma
         - period: time period (day)
-        - mode options: moving average:'ma', exponential moving average:'ema', displaced moving average:'dma'
+        - mode options: moving average:'ma', exponential moving average:'ema', displaced moving average:'dma', linear-weighted ma: 'lwma'
         - 
         """
+
+        if f'{mode}{period}' in self.stock_data:
+            return self.stock_data[f'{mode}{period}']
+        
+        if src_data is None:
+            src_data = self.close_price
+        
         DMA_DISPLACEMEN = math.floor(period/2)*(-1)
 
         if(mode =='ma'):
-            self.stock_data[f'ma{period}'] = src_data.rolling(period).mean()
+            self.stock_data[f'ma{period}'] = np.nan
+            ma = self.close_price.rolling(period).mean()
+            self.stock_data[f'ma{period}'] = ma[self.actual_start_inx:]
             self.stock_data[f'ma{period}'].dropna(inplace=True)
-            return self.stock_data[f'ma{period}']
+            return ma
             
         elif mode =='dma':
-            ma = src_data.rolling(period).mean()
+            
+            ma = self.close_price.rolling(period).mean()[self.actual_start_inx:]
             ma.dropna(inplace=True)
             self.stock_data[f"dma{period}"] = ma.shift(DMA_DISPLACEMEN)
             return self.stock_data[f"dma{period}"]
 
         elif(mode=='ema'):
-            self.stock_data[f'ema{period}'] = src_data.ewm(span=period, adjust=False).mean()
-            return self.stock_data[f"ema{period}"]
+            ma = self.close_price.ewm(span=period, adjust=False).mean()
+            self.stock_data[f'ema{period}'] = ma[self.actual_start_inx:]
+            return ma
         
         elif(mode=='lwma'):
              
             #Result not good
             DMA_DISPLACEMEN = math.floor(period/4)*(-1)
             weights = np.arange(1, period + 1)
-            lwma = self.stock_data['Close'].rolling(window=period).apply(lambda x: (x * weights).sum() / weights.sum(), raw=True)
+            lwma = self.close_price.rolling(window=period).apply(lambda x: (x * weights).sum() / weights.sum(), raw=True)[self.start:]
             lwma.dropna(inplace=True)
             self.stock_data[f"lwma{period}"] = lwma.shift(DMA_DISPLACEMEN)
             return self.stock_data[f"lwma{period}"]
@@ -188,20 +245,24 @@ class StockAnalyser():
         self.stock_data[f'slope {src_data.name}'] = slope_lst
         return self.stock_data[f'slope {src_data.name}']
 
-    def add_col_macd_group(self, src_data: pd.Series)->None:
+    def __add_col_macd_group(self, src_data: pd.Series)->None:
         """"
         add column of ema12, ema26, macd, signal line and slope of macd
         no return
         """
-        self.add_column_ma(src_data, 'ema', 12)
-        self.add_column_ma(src_data,'ema', 26)
+        pre_ma12 = self.close_price.ewm(span=12, adjust=False).mean()
+        pre_ma26 = self.close_price.ewm(span=26, adjust=False).mean()
+        self.add_column_ma(None, 'ema', 12)
+        self.add_column_ma(None, 'ema', 26)
+        self.macd = pd.DataFrame(pre_ma12 - pre_ma26, index=pre_ma12.index)
+        signal = self.macd.ewm(span=9, adjust=False).mean()
         self.stock_data['MACD']=self.stock_data['ema12'] - self.stock_data['ema26']
-        self.stock_data['signal'] = self.stock_data['MACD'].ewm(span=9, adjust=False).mean()
+        self.stock_data['signal'] = signal[self.actual_start_inx:]
         self.add_col_slope(self.stock_data['MACD'])
         self.add_col_slope(self.stock_data['signal'])
 
     
-    def add_col_macd(self, src_data: pd.Series)->None:
+    def __add_col_macd(self, src_data: pd.Series)->None:
         """"
         add column of ema12, ema26, macd, signal line and slope of macd
         no return
@@ -219,12 +280,6 @@ class StockAnalyser():
     
 
     
-    def get_col(self, col_name: str)->pd.Series:
-        """
-        return self.stock_data[col_nmae]
-        """
-        return self.stock_data[col_name]
-
     def set_butter(self, filter_period: int, src_data: pd.Series)->pd.Series:
         """
         filter frequency smaller than filter_period by Butterworth Low Pass Filter
@@ -330,9 +385,9 @@ class StockAnalyser():
         bottoms = pd.DataFrame({'close': bottoms_lst, "type": self.BOTTOM}, index=bottom_dates)
       
         #self.all_vertex = pd.concat([peaks, bottoms]).sort_index()
-        self.extrema = pd.concat([peaks, bottoms]).sort_index()
-        self.stock_data['type'] = self.extrema['type']
-        self.stock_data['p-b change'] = self.extrema['percentage change']
+        self.vertex = pd.concat([peaks, bottoms]).sort_index()
+        self.stock_data['type (from vertex)'] = self.vertex['type']
+        self.stock_data['p-b change (from vertex)'] = self.vertex['percentage change']
     
     
  
@@ -492,6 +547,7 @@ class StockAnalyser():
 
 
     def set_zigizag_trend(self, src_data: pd.Series, upthres: float=0.09, downthres: float=0.09) -> None:
+        self.zzthres = upthres
         self.stock_data['zigzag'] = np.nan
         self.stock_data['zigzag'] = zz.peak_valley_pivots(src_data, upthres, -downthres)
         self.stock_data.iloc[-1, self.stock_data.columns.get_loc('zigzag')] = (-1)* self.stock_data[self.stock_data['zigzag'] !=0]['zigzag'][-2]
@@ -510,10 +566,341 @@ class StockAnalyser():
                 self.stock_data.iloc[i, trend_col] = self.stock_data['zz trend'][i-1]
         logger.debug("set trend done")
 
+    def _add_col_zzuptrend_detected(self, upthres: float=0.09, downthres: float=0.09):
+        """
+        """
+        try:
+            assert 'zigzag' in self.stock_data
+        except AssertionError:
+            logger.error("stock_data doesn't contain column: \'zigzag\', cannot run is_zz_uptrend()")
+            return None
+        
+        
+        self.stock_data['zz uptrend detected']=False
+        col_d=self.stock_data.columns.get_loc('zz uptrend detected')
+        cur_big_btm = float('inf')
+
+        for i in range(0, self.data_len-1):
+            if self.stock_data['zigzag'][i]==1:
+                cur_big_btm = self.stock_data['close'][i]
+            if (self.stock_data['type'][i] == -1 
+                and self.stock_data['zz trend'][i]==1 
+                and self.stock_data['close'][i] > cur_big_btm*(1+upthres)):
+                self.stock_data.iloc[i, col_d] = True
+        return self.stock_data['zz uptrend detected']
     
+    def _is_uptrend(self, row: int, trend_col_name: str=None, zz_thres: float=0.09)->bool:
+        """
+        return 
+
+        if that row of self.stock_data is in uptrend
+         - trend_col_name: name of col in self.stock_data to use as source to calculate trend , with value >0 indicate uptrend, < 0 indicate downtrend
+
+        - row: which row of self.stock_data
+        - return True if trend_col_name not specified (assume no need to filter out downtrend)
+        """
+        if trend_col_name == 'zigzag':
+            if 'zz uptrend detected' not in self.stock_data:
+                self._add_col_zzuptrend_detected(zz_thres)
+
+            return self.stock_data['zz uptrend detected'][row]
+        if trend_col_name is None:
+            return True
+        return self.stock_data[trend_col_name][row] > 0
+    
+
+
+    def _get_conv_drop_rise_peak_list(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None, zzupthres: float=0.09):
+        
+        """
+        return: list of index
+
+        
+        """
+        try:
+            assert 'type' in self.stock_data
+            assert 'p-b change' in self.stock_data
+            assert 'close' in self.stock_data
+        except AssertionError:
+            logger.error("self.stock_data must contain column: \'type\', \'p-b change\' \nprogram exit")
+            exit(0)
+            
+
+        
+
+        POS_INF = float('inf')
+        prev_pbc = POS_INF
+        prev_peak = POS_INF
+        star_lst=[]
+        i=0
+        while i+1 < self.data_len-1:
+            next_peak_offset=0
+            if self._is_uptrend(i, trend_col_name, zzupthres) and self.stock_data['type'][i] ==-1 :
+                l =0
+                while self.stock_data['type'][i+l] !=1:
+                    if i+l-1 >=0:
+                        l-=1
+                    else:
+                        break
+                prev_peak = self.stock_data['close'][i+l] if l !=0 else prev_peak
+
+                rise_back_flag = False
+                break_pt_found_flag = False
+
+                potential_bp = POS_INF
+
+                
+                rise_back_offset=0
+                k =0
+                while self._is_uptrend(i+k, trend_col_name, zzupthres):
+                    if self.stock_data['close'][i+k] >= prev_peak: # record closest date rise back to prev peak
+                        if not rise_back_flag:
+                            rise_back_offset = k
+                            rise_back_flag = True
+                            potential_bp = i+rise_back_offset
+                            break
+                    if self.stock_data['type'][i] == 1:
+                        next_peak_offset=k
+                        potential_bp = i+next_peak_offset
+                        break
+                    k +=1
+                    if i+k+1 > self.data_len-1:
+                        break
+                
+                if (potential_bp< POS_INF
+                        and ( (not conv_drop_filter) or self.stock_data['p-b change'][i] > prev_pbc )
+                        and ( (not rise_peak_filter) or rise_back_flag )
+                        ):  
+                    break_pt_found_flag = True
+                if break_pt_found_flag:
+                    star_lst.append(potential_bp)
+                prev_pbc = self.stock_data['p-b change'][i]
+
+            i+=max(1, next_peak_offset)
+        return star_lst
+
         
     
-    def set_breakpoint(self, 
+    def _add_col_conv_drop_rise_peak(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None):
+        lst = self._get_conv_drop_rise_peak_list(conv_drop_filter=conv_drop_filter, 
+                                                rise_peak_filter=rise_peak_filter,
+                                                trend_col_name=trend_col_name)
+        """
+        return 
+
+         dataframe of bool
+         with True= is converging bottom and / or rising peak
+        """
+        
+        self.stock_data['conv drop rise peak']=False
+        star_col = self.stock_data.columns.get_loc('conv drop rise peak')
+        for item in lst:
+            self.stock_data.iloc[item, star_col]= True
+        return self.stock_data['conv drop rise peak']
+            
+
+
+        
+    def add_col_ma_above(self, stock_data: pd.DataFrame, short: int, long: int):
+
+        
+        if f'ma{short} above ma{long}' in stock_data:
+            return stock_data[f'ma{short} above ma{long}']
+        
+        if f'ma{short}' not in stock_data or f'ma{long}' not in stock_data:
+            raise Exception("ma has to be set before calculating ma above")
+
+        stock_data[f'ma{short} above ma{long}']=np.nan
+        col = stock_data.columns.get_loc(f'ma{short} above ma{long}')
+
+        for i in range(0, len(stock_data)):
+            if pd.isna(stock_data[f'ma{short}'][i]) or pd.isna(stock_data[f'ma{long}'][i]):
+                continue
+            if stock_data[f'ma{short}'][i] > stock_data[f'ma{long}'][i]:
+                stock_data.iloc[i, col] = True
+            else:
+                stock_data.iloc[i, col] = False
+        return stock_data[f'ma{short} above ma{long}']
+    
+    def add_col_rsi(self, stock_data: pd.DataFrame):
+        """
+        to be implement
+        """
+        pass
+
+    def _is_ma_above(self, stock_data: pd.DataFrame, row: int, short: list, long: list)-> bool:
+        """
+        return 
+
+        is ma{long} of that row > ma{short}
+
+        short: list of int
+        long: list of int
+        """
+
+        res = True # and of all comparison of MAs 
+        if len(short) != len(long):
+                raise Exception("list of short is not same as list of long, cannot get is_ma_above, program exit")
+                exit(0)
+        
+        for i in range(0, len(short)):
+            res = res and stock_data[f'ma{short[i]} above ma{long[i]}'][row]
+            #print(f"checking row: {stock_data.index[row]}, res={res}")
+        return res
+
+        
+    
+    def is_rsi_above(self, stock_data: pd.DataFrame, row: int, thres: float):
+        """
+        return 
+        is stock_data['rsi'] of that row > thres
+        """
+        if 'rsi' not in stock_data:
+            self.add_col_rsi(stock_data)
+        return stock_data['rsi'][row] > thres
+
+    
+    def _set_breakpoint(self, 
+                       trend_col_name: str=None,
+                       bpfilters: set=set(),
+                       ma_short: list=None, ma_long: list=None,
+                       rsi_thres: float=0, zz_thres: float=0)-> pd.DataFrame :
+        """
+        deving new version 
+         Parameter 
+        ---------
+        required col of stock_data: | type | p-b change | zigzag (if uptrend src selected as zigzag) | trend source (if uptrend_src=='any')
+        - trend_col_name: name of col of trend in stock_data, (not required if uptrend_src=='zz'), with value >0 indicate uptrend, < 0 indicate downtrend
+        - col 'type': (int/bool) mark peak as 1, bottom as 0, index as pd.dateTime
+        - col 'p-b change': (float) mark peak-to-bottom percentage change at each row of bottom, index as pd.dateTime
+        - col {trend_src}: (float), >0 indicate uptrend, < 0 indicate downtrend
+        - uptrend_src: 'zz': use 'zigzag' col to cal bp, 'any': use {trend_col_name} to cal bp
+        - zzupthres: required if uptrend_src=='zz'
+        - bpfilters: set of class BuyptFilter
+        """
+        try:
+            assert 'type' in self.stock_data
+            assert 'p-b change' in self.stock_data
+        except AssertionError:
+            logger.error("stock_data must contain column: \'type\', \'p-b change\' \nprogram exit")
+            exit(1)
+        
+        ## -- parameter -- ##
+
+        incl_1st_btm = True
+
+        
+        ## -- flags -- ##
+
+        to_find_bp_flag = True
+        self.stock_data['buy pt'] = False
+
+        if not bpfilters:
+            to_find_bp_flag = False
+            logger.warning("no break point filters set. no break point will be plotted")
+            return self.stock_data['buy pt']
+        
+        ## Set up buy point filter flags
+        
+        ## add new filters here if required
+
+        conv_filter = True if BuyptFilter.Converging_drop in bpfilters else False
+        rp_filter = True if BuyptFilter.Rising_peak in bpfilters else False
+        uptr_filter = True if BuyptFilter.In_uptrend in bpfilters else False
+        sma_abv_filter = True if BuyptFilter.SMA_short_above_long in bpfilters else False
+        rsi_abv_filter = True if BuyptFilter.RSI_over in bpfilters else False
+
+
+        in_uptrend_flag: bool=None
+        conv_drop_flag: bool=None
+        rise_peak_flag: bool=None
+        sma_above_flag: bool=None
+        rsi_above_flag: bool=None
+
+
+        if not uptr_filter:
+            in_uptrend_flag = True   
+        if not conv_filter:
+            conv_drop_flag = True
+        if not rp_filter:
+            rise_peak_flag = True
+        if not sma_abv_filter:
+            sma_above_flag = True
+        if not rsi_abv_filter:
+            rsi_above_flag = True
+
+        buy_point_found = False
+        buy_point_list=[]
+
+        logger.debug("filter received in set breakpoint:")
+        if conv_filter:
+            logger.debug("converging bottom", sep='')
+        if rp_filter:
+            logger.debug("rising peak", sep='')
+        if( sma_abv_filter):
+            logger.debug("sma above", sep='')
+        if uptr_filter:
+            logger.debug("in up trend", sep='')
+        if rsi_abv_filter:
+            logger.debug("rsi above", sep='')
+        
+        # since point of converging bottom and rising peak is sparse
+        # if converging bottom or rising peak filter is applied, 
+        # only check those points for other filters to save time
+
+        # check neccessary ma exist
+        if len(ma_short) != len(ma_long):
+            raise Exception("list of short is not same as list of long, cannot get is_ma_above, program exit")
+
+
+        for i in range(0, len(ma_short)):
+            if f'ma{ma_short[i]}' not in self.stock_data:
+                self.add_column_ma(None, 'ma', ma_short[i])
+            if f'ma{ma_long[i]}' not in self.stock_data:
+                self.add_column_ma(None, 'ma', ma_long[i])
+
+            if f'ma{ma_short[i]} above ma{ma_long[i]}' not in self.stock_data:
+
+                self.add_col_ma_above(self.stock_data, short=ma_short[i], long=ma_long[i])
+
+        if conv_filter or rp_filter:    
+            conv_drop_rise_peak_list = self._get_conv_drop_rise_peak_list(conv_filter, rp_filter, trend_col_name, zz_thres)
+            for idx in conv_drop_rise_peak_list:
+
+                if (   ( (not sma_abv_filter) or self._is_ma_above(self.stock_data, idx, ma_short, ma_long))
+                    and ( (not rsi_abv_filter) or self.is_rsi_above(self.stock_data, idx, rsi_thres))
+                    ):
+
+                    buy_point_found=True
+                    buy_point_list.append(idx)
+                    #print("sma above:", self._is_ma_above(self.stock_data, idx, ma_short, ma_long) )
+                    #print(f"date: {self.stock_data.index[idx]}, buy point: true")
+                else:
+                    buy_point_found = False
+
+
+        else:
+            for idx in range(0, self.data_len):
+                if (    
+                        (not uptr_filter or self._is_uptrend(idx, trend_col_name, zz_thres))
+                    and (not sma_abv_filter or self._is_ma_above(self.stock_data, idx, ma_short, ma_long))
+                    and (not rsi_abv_filter or self.is_rsi_above(self.stock_data, idx, rsi_thres))
+                    ):
+                    buy_point_found=True
+                    buy_point_list.append(idx)
+
+                else:
+                    buy_point_found = False
+
+
+        
+        bp_col = self.stock_data.columns.get_loc('buy pt')
+        for item in buy_point_list:
+            self.stock_data.iloc[item, bp_col]= True
+
+
+    
+    def set_breakpoint_old(self, 
                        stock_data: pd.DataFrame,
                        close_price: pd.Series, 
                        trend_col_name: str,
@@ -822,12 +1209,14 @@ class StockAnalyser():
         ax2.set_ylim(LOW_PLT_DOWNLIM, LOW_PLT_UPLIM)
 
         color_list=['fuchsia', 'cyan', 'tomato', 'peru', 'green', 'olive', 'tan', 'darkred']
+        color_idx=0
 
-        for i in range(0, len(cols)):    
-            line_sty='--' if 'ma' in cols else '-' 
-            ax1.plot(stock_data[cols[i]], 
-                    label=cols[i] if isinstance(cols[i], str) else '',
-                    alpha=0.6, linewidth=0.8, color=color_list[i], linestyle=line_sty)
+        for item in cols:
+            line_sty='dashed' if 'ma' in item else '-' 
+            ax1.plot(stock_data[item], 
+                    label=item if isinstance(item, str) else '',
+                    alpha=0.6, linewidth=0.8, color=color_list[color_idx], linestyle=line_sty)
+            color_idx+=1
             
         if self.smoothen_price is not None:
             ax1.plot(self.smoothen_price[self.smoothen_price>0], color='gold')
@@ -884,7 +1273,7 @@ class StockAnalyser():
                 ax1.scatter(maxdate, maxval, s=self.SCATTER_MARKER_SIZE, marker='d', color='lime')
                 if plot_latest_high:
                     ax1.text(maxdate-pd.DateOffset(1), maxval + annot_y_offset*2, "{:.2f}".format(maxval), fontsize=7,  ha='left', va='top', color='limegreen')
-                ax1.text(stock_data.index[-1] + pd.DateOffset(1), stock_data['close'][-1] *0.98 , 'drop from last high: \n'
+                ax1.text(stock_data.index[-1] + pd.DateOffset(1), stock_data['close'][-1] *0.995 , 'drop from last high: \n'
                          +'{:.2%}'.format(perc) 
                          +f',{(maxidx+1)*(-1)} bar', fontsize=8)
 
@@ -1029,10 +1418,13 @@ class StockAnalyser():
     def default_analyser(self, tickers: str, start: str, end: str,
             method: str='', T: int=0, 
             window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
-            bp_trend_src: str='signal',
-           bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
+            trend_col_name: str='slope signal',
+           bp_filters:set=set(),
+           ma_short_list: list=[], ma_long_list=[],
+           plot_ma: list=[],
            extra_text_box:str='',
-           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6) ->pd.DataFrame:
+           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6,
+           csv_dir: str=None) ->pd.DataFrame:
 
         """
         run everything
@@ -1044,26 +1436,33 @@ class StockAnalyser():
 
         - method: options: 'ma', 'ema', 'dma', 'butter', 'close'|
         - T: day range of taking ma/butterworth low pass filter |
+        - ma_short_list, ma_long_list, 
+        - plot_ma: list of string, e.g. ma9, ema12
         - window_size: window to locate extrema from approx. price |
+        - bp_filters: set of BuypointFilter, filter to applied to find buy point
         - extra_text_box: extra textbox to print on graph|
-        - graph_showOption: 'save', 'show', 
+        - graph_showOption: 'save', 'show', 'no'
+
     
         """
+        
+        max_ma_long = max(ma_long_list) if len(ma_long_list) >0 else 0
+        pre_period = math.ceil(max(T,max_ma_long, 78) *365/252) # adjust by proportion of trading day in a year calculate
+        logger.info(f"days require before user's specified start day: {pre_period}")
 
-    
+        # since we need start earlier to calculate ma
+        pre_start = pd.to_datetime(start) - pd.DateOffset(pre_period)
+        logger.info(f"download stock start from: {pre_start}")
 
-        try:
-            self.download(tickers, start, end)
-        except Exception as err:
-            logger.error(f"Download stock failed: {err}\nskip to next stock")
-            return
+        self.download(tickers, start, end, pre_start)
+
         logger.info(f"analysing stock: {tickers}...")
         if self.data_len < 27:
             logger.warning("number of trading days <=26, analysis may not be accurate")
 
-        logger.debug(f"config set:\nmethod={method}\tT={T}\nbp_trend_src={bp_trend_src}\tconv drop={bp_filter_conv_drop}\trise peak={bp_filter_rising_peak}")
+        logger.debug(f"config set:\nmethod={method}\tT={T}\ntrend={trend_col_name}\t{extra_text_box}")
 
-        extra_col_name =[]
+        extra_col_name =set()
         smooth=False
 
         ## Parameter Checking
@@ -1076,9 +1475,9 @@ class StockAnalyser():
 
         else:
             if method =='ma' or method =='ema' or  method =='dma':
-                self.add_column_ma(src_data=self.stock_data['close'], mode=method, period=T)
+                self.add_column_ma(src_data=self.close_price, mode=method, period=T)
                 #self.add_col_slope(f"{method}{T}")
-                extra_col_name.append(f"{method}{T}")
+                extra_col_name.add(f"{method}{T}")
 
                 # smooth
                 if smooth:
@@ -1109,34 +1508,44 @@ class StockAnalyser():
                 
                 self.butter(T)
                 self.set_extrema(src_data=self.stock_data[f'buttered Close T={T}'], close_price=self.stock_data['close'], window_dir='both', stock=tickers)
-                extra_col_name.append(f'buttered Close T={T}')
+                extra_col_name.add(f'buttered Close T={T}')
             else:
                 raise Exception("invalid method")
+            
+        ## ADD required MAs
+
+        for item in ma_long_list:
+            self.add_column_ma(self.close_price, 'ma', item)
+            extra_col_name.add(f'ma{item}')
+        for item in ma_short_list:
+            self.add_column_ma(self.close_price, 'ma', item)
+            extra_col_name.add(f'ma{item}')
+
+        for item in plot_ma:
+            match =  re.match(r'([a-zA-Z]+)(\d+)', item)
+            if match:
+                char = match.group(1)
+                num = int(match.group(2))
+                self.add_column_ma(self.close_price, char, num)
+                extra_col_name.add(item)
+        
+        
+
         
         self.set_zigizag_trend(self.stock_data['close'], upthres=zzupthres, downthres=zzdownthres)
         
 
-        self.add_col_macd_group(self.stock_data['close'])
+        self.__add_col_macd_group(self.close_price)
+        
 
-        if bp_trend_src=='signal':
-            trend_col_name = 'slope signal'
-            trend_src_str='any'
-
-        elif bp_trend_src=='zz':
-            trend_col_name = None
-            trend_src_str='zz'
-        else:
-            raise Exception("invalid trend source")
-            
-        self.set_breakpoint(stock_data= self.stock_data,
-                            close_price=self.stock_data['close'], 
-                            trend_col_name=trend_col_name,
-                            uptrend_src=trend_src_str,
-                            bp_filter_conv_drop=bp_filter_conv_drop, 
-                            bp_filter_rising_peak=bp_filter_rising_peak,
-                            bp_filter_uptrend=bp_filter_uptrend,
-                            )
+        self._set_breakpoint( trend_col_name=trend_col_name,
+                        bpfilters=bp_filters,
+                        ma_short=ma_short_list,
+                        ma_long=ma_long_list,
+                        zz_thres=zzupthres,
+                             )
         self.set_buy_point(self.stock_data['buy pt'])
+ 
 
 
         logger.debug(f"-- Stock Data of {tickers} (after all set)--")
@@ -1163,7 +1572,7 @@ class StockAnalyser():
                             text_box=f"{tickers}, {start} - {end}\n{extra_text_box}", 
                             figsize=figsize,
                             annotfont=annotfont, showOption=graph_showOption, savedir=graph_dir)
-            # self.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
+            #self.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
             
 
             
@@ -1176,12 +1585,15 @@ class StockAnalyser():
             else:
                 plt.show()
                 logger.info("graph shown")
+
         else:
             filtered= self.stock_data[self.stock_data['buy pt']>0]['close']
-
             for ind, val in filtered.items():   # item is float
-
                 logger.info(ind.strftime("%Y-%m-%d"))
+
+        if csv_dir is not None:
+            self.stock_data_to_csv(csv_dir)
+                
         return self.stock_data
         
     def wrong_fn(self):     #for testing
@@ -1192,24 +1604,31 @@ def default_analyser_runner(tickers: str, start: str, end: str,
            method: str='', T: int=0, 
             window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
             macd_signal_T: int=9,
-            bp_trend_src: str='signal',
-           bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
+            bp_filters:set=set(),
+            ma_short_list: list=[], ma_long_list=[],
+            plot_ma: list=[],
+            trend_col_name: str='slope signal',
            extra_text_box:str='',
-           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6):
+           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6,
+           csv_dir: str=None):
     stock = StockAnalyser()
+    if extra_text_box =='':
+        extra_text_box = 'filters of buy point: '
+        for item in bp_filters:
+            extra_text_box+= f'{item}, '
     stock.default_analyser(tickers=tickers, start=start, end=end,
                           method=method, T=T,
                         window_size=window_size, smooth_ext=smooth_ext,
                         zzupthres=zzupthres, zzdownthres=zzdownthres,
-                        bp_trend_src=bp_trend_src,
-                        bp_filter_conv_drop=bp_filter_conv_drop,
-                        bp_filter_rising_peak=bp_filter_rising_peak,
-                        bp_filter_uptrend=bp_filter_uptrend,
+                        trend_col_name=trend_col_name,
+                        bp_filters=bp_filters,
+                        ma_long_list=ma_long_list, ma_short_list=ma_short_list,
                         extra_text_box=extra_text_box,
                         graph_showOption=graph_showOption,
                         graph_dir=graph_dir,
-                        figsize=figsize,annotfont=annotfont
-    )
+                        figsize=figsize,annotfont=annotfont,
+                        csv_dir=csv_dir
+    )           
 
 
 
@@ -1223,17 +1642,32 @@ def trial_runner():
                   'nvda', 'pdd', 'pltr', 'roku',
                   'snap', 'tsla', 'uber', 'vrtx',
                   'xpev']
+    
+    logger.remove()     # remove deafult logger before adding custom logger
+    logger.add(
+        sys.stderr,
+        level='INFO'
+
+    )
     stock=StockAnalyser()
+
    
     #df = stock.download('pdd', '2023-07-01', '2023-08-01')
-    df = stock.default_analyser(tickers='pdd', start='2023-05-01', end='2023-08-01',
+    df = stock.default_analyser(tickers='tsm', start='2022-08-01', end='2023-08-16',
                             method='close',
-                            window_size=5,
-                            bp_trend_src='signal',
-                               graph_showOption='no' )
-    print(df['close'].dtype)
+                            bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
+                            ma_short_list=[3, 20], ma_long_list=[9, 50],
+                            
+                               graph_showOption='save' )
+    
+
+
+
     df2= stock.get_stock_data()
-    print(df2['close'].dtype)
+
+
+    #print(tabulate(stock.close_price))
+    stock.stock_data_to_csv()
 
     # stock.set_extrema(df['close'])
     # result = stock.get_stock_data()
@@ -1256,7 +1690,7 @@ if __name__ == "__main__":
     )
     logger.add(
         f"../../stockAnalyser_{date.today()}_log.log",
-        level='INFO'
+        level='DEBUG'
 
     )
     logger.info("-- ****  NEW RUN START **** --")
@@ -1269,7 +1703,8 @@ if __name__ == "__main__":
     parser.add_argument('--start', '-s', help='start date', type=str, default='')
     parser.add_argument('--end', '-e', help='end date', type=str, default='')
     parser.add_argument('--stocklist_file','-f', help='stock list file dir',type=str, default=None)
-    parser.add_argument('--graph_dir','-g', type=str, default='../../')  # no .png
+    parser.add_argument('--graph_dir','-g', type=str, default='../../')  # end with /, no .png
+    parser.add_argument('--csv_dir', '-v', help='csv folder dir (file name is pre-set), default=../../', type=str, default='../../')
     parser.add_argument('--figsize', type=tuple, default=(40,20))
     parser.add_argument('--figdpi', type=int, default=200)
     parser.add_argument('--showopt', '-o', help='graph show option: \'save\', \'show\', \'no\'', type=str, default='save')
@@ -1292,8 +1727,8 @@ if __name__ == "__main__":
     graph_file_dir = args.graph_dir
     graph_figsize=args.figsize
     graph_dpi=args.figdpi
-    graph_show_opt = args.showopt
-
+    graph_show_opt = str(args.showopt).strip()
+    csv_dir=args.csv_dir
     
 
     allow_direct_run_flag = False
@@ -1321,11 +1756,11 @@ if __name__ == "__main__":
                 logger.info(f"getting info of {item}")
                 default_analyser_runner(item, stockstart, stockend,
                         method='close', 
-                        
-                        bp_filter_conv_drop=True, bp_filter_rising_peak=True,
+                        bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
                         figsize=graph_figsize, annotfont=4,
                         graph_dir=f'{graph_file_dir}_{item}.png',
-                        bp_filter_uptrend=True, graph_showOption=graph_show_opt
+                        graph_showOption=graph_show_opt,
+                        csv_dir=csv_dir
                             )
                 logger.info(f"{item} analyse done")
             
@@ -1346,12 +1781,14 @@ if __name__ == "__main__":
             
             default_analyser_runner(item, stockstart, stockend,
                 method='close', 
-                bp_trend_src='signal',
-                bp_filter_conv_drop=True, bp_filter_rising_peak=True,
+                ma_short_list=[3, 20],
+                ma_long_list=[9, 50],
+                bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=f'{graph_file_dir}_{item}.png',
-                extra_text_box='bear market 2021 Oct - 2022 Oct, trend: MACD signal slope>0',
-                bp_filter_uptrend=True, graph_showOption=graph_show_opt )
+                extra_text_box='',
+                 graph_showOption=graph_show_opt,
+                 csv_dir=csv_dir )
             logger.info(f"{item} analyse done")
         
         logger.info(f"{item} analyse done")
@@ -1362,12 +1799,24 @@ if __name__ == "__main__":
 
         default_analyser_runner(stockticker, stockstart, stockend,
                 method='close', 
-                bp_filter_conv_drop=True, bp_filter_rising_peak=True,
-                figsize=graph_figsize, annotfont=4,
-                graph_dir=f'{graph_file_dir}.png',
-                bp_filter_uptrend=True, graph_showOption=graph_show_opt )
+                ma_short_list=[3,20],
+                ma_long_list=[9,50],
+                bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
+                figsize=graph_figsize, annotfont=3,
+                graph_dir=f'{graph_file_dir}_{stockticker}.png',
+                graph_showOption=graph_show_opt,
+                csv_dir=csv_dir )
+    
 
     ## -- Example -- ##
-    ## To be Written
 
-    
+    ## run in command line
+
+    ## PDD from 2020, save graph
+    # python stock_analyser.py -t=pdd -s=2020-01-01 -e=2023-08-16 -o=save -g=../../stock_analyser_graph/
+
+    ## TSLA from 2020, don't plot graph
+    # python stock_analyser.py -t=tsla -s=2020-01-01 -e=2023-08-16 -o=no
+
+    ## TSMC from 2021, don't plot graph, save stock data to csv
+    # python stock_analyser.py -t=tsm -s=2022-08-01 -e=2023-08-16 -o=save -v=../../stock_analyser_graph/
