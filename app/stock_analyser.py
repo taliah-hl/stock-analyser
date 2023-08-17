@@ -15,6 +15,7 @@ from datetime import date, timedelta
 import argparse
 import sys
 import enum
+import re
 
 class DayType(enum.Enum):
     BUYPT=1
@@ -43,8 +44,9 @@ class StockAnalyser():
 
         self.tickers= None
         self.start = None
-        self.pre_start=None
-        self.close_price = None # contain stock close price start earlier than user's specified in order to calculate MA
+        self.pre_start=None # start day to calculate longest required MA
+        self.close_price = None # close price start from pre_start
+        self.actual_start_inx = None    # idx of first business day after user specified start day
         self.end = None
         self.stock_data = None
         self.smooth_data_N = 10
@@ -74,12 +76,13 @@ class StockAnalyser():
         else:
             stock_info = yf.download(tickers, start=start, end=end)
         self.tickers=tickers
-        self.start = self.next_trading_day(start)
+        self.start=start
+        actual_start = self.next_trading_day(start)
         self.end = end
         self.close_price =  pd.DataFrame(stock_info['Close']).rename(columns={'Close':'close'})
         print(self.close_price.index.dtype)
-        actual_start_inx = self.close_price.index.get_loc(self.start)
-        self.stock_data = pd.DataFrame(self.close_price[actual_start_inx:], index=self.close_price.index[actual_start_inx:])
+        self.actual_start_inx = self.close_price.index.get_loc(actual_start)
+        self.stock_data = pd.DataFrame(self.close_price[self.actual_start_inx:], index=self.close_price.index[self.actual_start_inx:])
         
         self.data_len = len(self.stock_data)
        
@@ -170,7 +173,7 @@ class StockAnalyser():
         return self.stock_data.columns.tolist()
     
     
-    def add_column_ma(self,  src_data: pd.Series, mode: str='ma', period: int=9)->pd.Series:
+    def add_column_ma(self,  src_data: pd.Series=None, mode: str='ma', period: int=9)->pd.Series:
         """
         add a column of moving average (MA) to stock_data
         return: ma
@@ -181,26 +184,36 @@ class StockAnalyser():
         - mode options: moving average:'ma', exponential moving average:'ema', displaced moving average:'dma', linear-weighted ma: 'lwma'
         - 
         """
+
         if f'{mode}{period}' in self.stock_data:
             return self.stock_data[f'{mode}{period}']
+        
+        if src_data is None:
+            src_data = self.close_price
         
         DMA_DISPLACEMEN = math.floor(period/2)*(-1)
 
         if(mode =='ma'):
             self.stock_data[f'ma{period}'] = np.nan
-            self.stock_data[f'ma{period}'] = self.close_price.rolling(period).mean()[self.start:]
+            ma = self.close_price.rolling(period).mean()
+            print(tabulate(ma))
+            self.stock_data[f'ma{period}'] = ma[self.actual_start_inx:]
             self.stock_data[f'ma{period}'].dropna(inplace=True)
-            return self.stock_data[f'ma{period}']
+            return ma
             
         elif mode =='dma':
-            ma = src_data.rolling(period).mean()[self.start:]
+            
+            ma = self.close_price.rolling(period).mean()[self.actual_start_inx:]
             ma.dropna(inplace=True)
             self.stock_data[f"dma{period}"] = ma.shift(DMA_DISPLACEMEN)
             return self.stock_data[f"dma{period}"]
 
         elif(mode=='ema'):
-            self.stock_data[f'ema{period}'] = self.close_price.ewm(span=period, adjust=False).mean()[self.start:]
-            return self.stock_data[f"ema{period}"]
+            ma = self.close_price.ewm(span=period, adjust=False).mean()
+            self.stock_data[f'ema{period}'] = ma[self.actual_start_inx:]
+            print(tabulate(ma, headers='keys'))
+            print(type(ma))
+            return ma
         
         elif(mode=='lwma'):
              
@@ -234,20 +247,27 @@ class StockAnalyser():
         self.stock_data[f'slope {src_data.name}'] = slope_lst
         return self.stock_data[f'slope {src_data.name}']
 
-    def add_col_macd_group(self, src_data: pd.Series)->None:
+    def _add_col_macd_group(self, src_data: pd.Series)->None:
         """"
         add column of ema12, ema26, macd, signal line and slope of macd
         no return
         """
-        self.add_column_ma(src_data, 'ema', 12)
-        self.add_column_ma(src_data,'ema', 26)
+        pre_ma12 = self.close_price.ewm(span=12, adjust=False).mean()
+        pre_ma26 = self.close_price.ewm(span=26, adjust=False).mean()
+
+        self.macd = pd.DataFrame(pre_ma12 - pre_ma26, index=pre_ma12.index)
+        signal = self.macd.ewm(span=9, adjust=False).mean()
+        print("$$$$$$$ self.macd $$$$$$")
+        print(tabulate(self.macd))
+        print("$$$$$$$ signal $$$$$$")
+        print(tabulate(signal))
         self.stock_data['MACD']=self.stock_data['ema12'] - self.stock_data['ema26']
-        self.stock_data['signal'] = self.stock_data['MACD'].ewm(span=9, adjust=False).mean()
+        self.stock_data['signal'] = signal[self.actual_start_inx:]
         self.add_col_slope(self.stock_data['MACD'])
         self.add_col_slope(self.stock_data['signal'])
 
     
-    def add_col_macd(self, src_data: pd.Series)->None:
+    def _add_col_macd(self, src_data: pd.Series)->None:
         """"
         add column of ema12, ema26, macd, signal line and slope of macd
         no return
@@ -1155,6 +1175,10 @@ class StockAnalyser():
 
         LOW_PLT_UPLIM = stock_data['MACD'].max()*1.1
         LOW_PLT_DOWNLIM = stock_data['MACD'].min()*1.1
+        logger.warning(UP_PLT_UPLIM)
+        logger.warning(UP_PLT_DOWNLIM)
+        logger.warning(LOW_PLT_UPLIM)
+        logger.warning(LOW_PLT_DOWNLIM)
          
         fig, (ax1,ax2) = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=figsize, dpi=figdpi, gridspec_kw={'height_ratios': [7, 1]})
         fig.subplots_adjust(hspace=0.05)  # adjust space between axes
@@ -1376,6 +1400,7 @@ class StockAnalyser():
             trend_col_name: str='slope signal',
            bp_filters:set={},
            ma_short_list: list=[], ma_long_list=[],
+           plot_ma: list=[],
            extra_text_box:str='',
            graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6,
            csv_dir: str=None) ->pd.DataFrame:
@@ -1390,21 +1415,23 @@ class StockAnalyser():
 
         - method: options: 'ma', 'ema', 'dma', 'butter', 'close'|
         - T: day range of taking ma/butterworth low pass filter |
-        - ma_short_list, ma_long_list: list of integer
+        - ma_short_list, ma_long_list, 
+        - plot_ma: list of string, e.g. ma9, ema12
         - window_size: window to locate extrema from approx. price |
         - bp_filters: set of BuypointFilter, filter to applied to find buy point
         - extra_text_box: extra textbox to print on graph|
         - graph_showOption: 'save', 'show', 'no'
+
     
         """
         
         max_ma_long = max(ma_long_list) if len(ma_long_list) >0 else 0
-        pre_period = math.ceil(max(T,max_ma_long) *365/252) # adjust by proportion of trading day in a year calculate
-        print("pre per:", pre_period)
+        pre_period = math.ceil(max(T,max_ma_long, 78) *365/252) # adjust by proportion of trading day in a year calculate
+        logger.info(f"days require before user's specified start day: {pre_period}")
 
         # since we need start earlier to calculate ma
         pre_start = pd.to_datetime(start) - pd.DateOffset(pre_period)
-        print("pre start: ", pre_start)
+        logger.info(f"download stock start from: {pre_start}")
 
         self.download(tickers, start, end, pre_start)
 
@@ -1473,11 +1500,22 @@ class StockAnalyser():
             self.add_column_ma(self.stock_data['close'], 'ma', item)
             extra_col_name.append(f'ma{item}')
 
+        for item in plot_ma:
+            match =  re.match(r'([a-zA-Z]+)(\d+)', item)
+            if match:
+                char = match.group(1)
+                num = int(match.group(2))
+                self.add_column_ma(self.close_price, char, num)
+                extra_col_name.append(item)
+        
+        
+
         
         self.set_zigizag_trend(self.stock_data['close'], upthres=zzupthres, downthres=zzdownthres)
         
 
-        self.add_col_macd_group(self.stock_data['close'])
+        self._add_col_macd_group(self.close_price)
+        
 
         self._set_breakpoint( trend_col_name=trend_col_name,
                         bpfilters=bp_filters,
@@ -1513,7 +1551,7 @@ class StockAnalyser():
                             text_box=f"{tickers}, {start} - {end}\n{extra_text_box}", 
                             figsize=figsize,
                             annotfont=annotfont, showOption=graph_showOption, savedir=graph_dir)
-            # self.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
+            #self.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
             
 
             
@@ -1547,6 +1585,7 @@ def default_analyser_runner(tickers: str, start: str, end: str,
             macd_signal_T: int=9,
             bp_filters:set={},
             ma_short_list: list=[], ma_long_list=[],
+            plot_ma: list=[],
             trend_col_name: str='slope signal',
            extra_text_box:str='',
            graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6,
@@ -1586,15 +1625,18 @@ def trial_runner():
 
    
     #df = stock.download('pdd', '2023-07-01', '2023-08-01')
-    df = stock.default_analyser(tickers='tsm', start='2023-01-01', end='2023-08-15',
+    df = stock.default_analyser(tickers='tsm', start='2023-01-01', end='2023-04-01',
                             method='close',
-                            T=200,
-                               graph_showOption='no' )
-    stock.add_column_ma(None, 'ma', 200)
-    stock.add_column_ma(None, 'ma', 9)
-    stock.add_column_ma(None, 'ma', 3)
+                             plot_ma=['ema12', 'ema26'],
+                               graph_showOption='save' )
+    
+
+
+
     df2= stock.get_stock_data()
-    idx = df2.index.get_loc('2023-05-03')
+    
+    print(stock.close_price)
+
     #print(tabulate(stock.close_price))
     stock.stock_data_to_csv()
 
@@ -1738,7 +1780,6 @@ if __name__ == "__main__":
     
 
     ## -- Example -- ##
-    ## To be Written
 
     ## run in command line
 
