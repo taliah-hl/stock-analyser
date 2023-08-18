@@ -405,12 +405,13 @@ class BackTest():
 
                 try:
                     share_num=math.floor(txn_table['cash'][idx-1] / txn_table['close price'][idx])
-                    txn_table.iloc[idx] = self.buy(prev_row=txn_table.iloc[idx-1].to_dict(), 
-                                            cur_row=txn_table.iloc[idx].to_dict(),
-                                            share=share_num )
-                    last_buy_date=idx
-                    is_holding = True
-                    latest_high=txn_table['close price'][idx] # reset latest high
+                    if share_num >=1:
+                        txn_table.iloc[idx] = self.buy(prev_row=txn_table.iloc[idx-1].to_dict(), 
+                                                cur_row=txn_table.iloc[idx].to_dict(),
+                                                share=share_num )
+                        last_buy_date=idx
+                        is_holding = True
+                        latest_high=txn_table['close price'][idx] # reset latest high
                 except OverflowError as err:
                     logger.error(err)
                     logger.error(f"at date={txn_table.index[idx]}, cash/close=infinity")
@@ -490,7 +491,7 @@ def runner(tickers, start:str, end:str, capital:float,
            bp_filters: set=set(),
            ma_short_list: list=[], ma_long_list=[],
            plot_ma: list=[],
-           graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
+           graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=4,
            csv_dir:str='../../', print_all_ac:bool=True)->float:
     """
     return 
@@ -737,7 +738,7 @@ if __name__ == "__main__":
         # filter:sma cross only
         runner(stockticker, stockstart, stockend, capital, 
                SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-               bp_filters={sa.BuyptFilter.In_uptrend, sa.BuyptFilter.SMA_short_above_long},
+               bp_filters={sa.BuyptFilter.SMA_short_above_long},
                 ma_short_list=[3, 50],
                 ma_long_list=[13, 150],
                 graph_showOption=graph_show_opt,

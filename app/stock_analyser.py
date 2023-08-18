@@ -603,7 +603,7 @@ class StockAnalyser():
                 self.stock_data.iloc[i, col_d] = True
         return self.stock_data['zz uptrend detected']
     
-    def _is_uptrend(self, row: int, trend_col_name: str=None, zz_thres: float=0.09)->bool:
+    def __is_uptrend(self, row: int, trend_col_name: str=None, zz_thres: float=0.09)->bool:
         """
         return 
 
@@ -624,7 +624,7 @@ class StockAnalyser():
     
 
 
-    def _get_conv_drop_rise_peak_list(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None, zzupthres: float=0.09):
+    def __get_conv_drop_rise_peak_list(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None, zzupthres: float=0.09):
         
         """
         return: list of index
@@ -649,7 +649,7 @@ class StockAnalyser():
         i=0
         while i+1 < self.data_len-1:
             next_peak_offset=0
-            if self._is_uptrend(i, trend_col_name, zzupthres) and self.stock_data['type'][i] ==-1 :
+            if self.__is_uptrend(i, trend_col_name, zzupthres) and self.stock_data['type'][i] ==-1 :
                 l =0
                 while self.stock_data['type'][i+l] !=1:
                     if i+l-1 >=0:
@@ -666,7 +666,7 @@ class StockAnalyser():
                 
                 rise_back_offset=0
                 k =0
-                while self._is_uptrend(i+k, trend_col_name, zzupthres):
+                while self.__is_uptrend(i+k, trend_col_name, zzupthres):
                     if self.stock_data['close'][i+k] >= prev_peak: # record closest date rise back to prev peak
                         if not rise_back_flag:
                             rise_back_offset = k
@@ -695,8 +695,8 @@ class StockAnalyser():
 
         
     
-    def _add_col_conv_drop_rise_peak(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None):
-        lst = self._get_conv_drop_rise_peak_list(conv_drop_filter=conv_drop_filter, 
+    def __add_col_conv_drop_rise_peak(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None):
+        lst = self.__get_conv_drop_rise_peak_list(conv_drop_filter=conv_drop_filter, 
                                                 rise_peak_filter=rise_peak_filter,
                                                 trend_col_name=trend_col_name)
         """
@@ -716,7 +716,9 @@ class StockAnalyser():
 
         
     def add_col_ma_above(self, stock_data: pd.DataFrame, short: int, long: int):
-
+        """
+        calculate is col ma{short} > col ma{long} of each row, make colume ma{short} above ma{long} in stock_data
+        """
         
         if f'ma{short} above ma{long}' in stock_data:
             return stock_data[f'ma{short} above ma{long}']
@@ -738,11 +740,11 @@ class StockAnalyser():
     
     def add_col_rsi(self, stock_data: pd.DataFrame):
         """
-        to be implement
+        not implemented, just an empty function as example
         """
         pass
 
-    def _is_ma_above(self, stock_data: pd.DataFrame, row: int, short: list, long: list)-> bool:
+    def is_ma_above(self, stock_data: pd.DataFrame, row: int, short: list, long: list)-> bool:
         """
         return 
 
@@ -774,7 +776,7 @@ class StockAnalyser():
         return stock_data['rsi'][row] > thres
 
     
-    def _set_breakpoint(self, 
+    def __set_breakpoint(self, 
                        trend_col_name: str=None,
                        bpfilters: set=set(),
                        ma_short: list=None, ma_long: list=None,
@@ -878,10 +880,10 @@ class StockAnalyser():
                 self.add_col_ma_above(self.stock_data, short=ma_short[i], long=ma_long[i])
 
         if conv_filter or rp_filter:    
-            conv_drop_rise_peak_list = self._get_conv_drop_rise_peak_list(conv_filter, rp_filter, trend_col_name, zz_thres)
+            conv_drop_rise_peak_list = self.__get_conv_drop_rise_peak_list(conv_filter, rp_filter, trend_col_name, zz_thres)
             for idx in conv_drop_rise_peak_list:
 
-                if (   ( (not sma_abv_filter) or self._is_ma_above(self.stock_data, idx, ma_short, ma_long))
+                if (   ( (not sma_abv_filter) or self.is_ma_above(self.stock_data, idx, ma_short, ma_long))
                     and ( (not rsi_abv_filter) or self.is_rsi_above(self.stock_data, idx, rsi_thres))
                     ):
 
@@ -896,8 +898,8 @@ class StockAnalyser():
         else:
             for idx in range(0, self.data_len):
                 if (    
-                        (not uptr_filter or self._is_uptrend(idx, trend_col_name, zz_thres))
-                    and (not sma_abv_filter or self._is_ma_above(self.stock_data, idx, ma_short, ma_long))
+                        (not uptr_filter or self.__is_uptrend(idx, trend_col_name, zz_thres))
+                    and (not sma_abv_filter or self.is_ma_above(self.stock_data, idx, ma_short, ma_long))
                     and (not rsi_abv_filter or self.is_rsi_above(self.stock_data, idx, rsi_thres))
                     ):
                     buy_point_found=True
@@ -914,201 +916,7 @@ class StockAnalyser():
 
 
     
-    def set_breakpoint_old(self, 
-                       stock_data: pd.DataFrame,
-                       close_price: pd.Series, 
-                       trend_col_name: str,
-                       uptrend_src: str='any',
-                       zzupthres: int=0.09, 
-                       bp_filter_conv_drop: bool=True,
-                       bp_filter_rising_peak: bool=True,
-                       bp_filter_uptrend: bool=True) -> pd.DataFrame:
-        """
-        return
-        ---------
-        input df stock_data with col 'buy pt' added, which is break point of stock price
-
-        Parameter 
-        ---------
-        required col of stock_data: | type | p-b change | zigzag (if uptrend src selected as zigzag) | trend source (if uptrend_src=='any')
-        - trend_col_name: name of col of trend in stock_data, (not required if uptrend_src=='zz'), with value >0 indicate uptrend, < 0 indicate downtrend
-        - col 'type': (int/bool) mark peak as 1, bottom as 0, index as pd.dateTime
-        - col 'p-b change': (float) mark peak-to-bottom percentage change at each row of bottom, index as pd.dateTime
-        - col {trend_src}: (float), >0 indicate uptrend, < 0 indicate downtrend
-        - uptrend_src: 'zz': use 'zigzag' col to cal bp, 'any': use {trend_col_name} to cal bp
-        - zzupthres: required if uptrend_src=='zz'
-        - bp_filter_conv_drop, bp_filter_rising_peak: whether to apply converging drop or rising peak filter, at least one has to be applied
-        - bp_filter_uptrend: (only has effect when uptrend_src=='zz') whether to apply uptrend detected filter (recommended)
-
-
-        """
-
-        ## -- checking -- ##
-        uptrddays=[]
-        checking_flag = 0
-        try:
-            assert 'type' in stock_data
-            assert 'p-b change' in stock_data
-        except AssertionError:
-            logger.error("stock_data must contain column: \'type\', \'p-b change\' \nprogram exit")
-            exit(1)
-        
-        ## -- parameter -- ##
-
-        incl_1st_btm = True
-
-        
-        ## -- flags -- ##
-
-        to_find_bp_flag = True
-
-        if not (bp_filter_conv_drop or bp_filter_rising_peak or bp_filter_uptrend):
-            logger.warning("break point filters all set to false. no break point will be plotted")
-            to_find_bp_flag = False
-
-        POS_INF = float('inf')
-
-
-        stock_data['buy pt'] = np.nan
-        prev_pbc = POS_INF
-        star_lst =[]
-
-        
-
-        # converging bottom conditions set:
-        # 1. peak-to-bottom drop less than previous peak-to-bottom drop
-        # 2. next little peak rise above previous little peak
-        # 3.  cur price rise above prev big bottom * 1+ zigzag threshold (only apply if source of uptrend is zigzag
-        prev_pbc = POS_INF
-        prev_peak = POS_INF
-
-
-        
-        i=0
-        if uptrend_src=='zz':   # use zigzag indicator as uptrend source
-
-            try:
-                assert 'zigzag' in stock_data
-            except AssertionError:
-                logger.error("trend source selected as ziagzag, stock_data must contain column: \'zigzag\' \nprogram exit")
-                exit(1)
-
-            while i< self.data_len-2:           
-                if stock_data['zigzag'][i] ==-1:     # encounter big bottom
-                    
-                    
-                    chck_date_idx = np.nan
-                    
-                    j = 1 if incl_1st_btm else 0
-                    cur_big_btm = close_price[i]
-                    while stock_data['zigzag'][i+j] != 1 :   # not encounter big peak yet
-                        rise_back_offset=18250      # random large number
-                        next_peak_offset =0
-                        if stock_data['type'][i+j] == -1:
-                            # 1. find prev little peak
-                            l=0
-                            while stock_data['type'][i+j+l] !=1: # find prev little peak
-                                if i+j+l-1 >=0:
-                                    l-=1
-                                else:
-                                    break
-                            prev_peak = close_price[i+j+l] if l !=0 else prev_peak
-
-                            rise_back_flag = False
-                            break_pt_found_flag = False
-                        
-                            
-
-                            while stock_data['type'][i+j+next_peak_offset] != 1 and stock_data['zigzag'] [i+j+next_peak_offset] != 1: #find next little peak
-                                if close_price[i+j+next_peak_offset] >= prev_peak: # record closest date rise back to prev peak
-                                    if not rise_back_flag:
-                                        rise_back_offset = next_peak_offset
-                                        rise_back_flag = True
-
-                                next_peak_offset +=1
-                                if i+j+next_peak_offset+1>self.data_len-1:
-                                    break
-                            
-                            #potential break point = next little peak or date of rise back to prev peak, which ever earlier
-                            potential_bp = min(i+j+rise_back_offset, i+j+next_peak_offset)  
-
-                        
-                            if (to_find_bp_flag 
-                                and ( (not bp_filter_conv_drop) or stock_data['p-b change'][i+j] > prev_pbc )
-                                and ( (not bp_filter_rising_peak) or rise_back_flag )
-                                and ( (not bp_filter_uptrend) or close_price[potential_bp] > cur_big_btm*(1+zzupthres) ) 
-                                ):  
-                                break_pt_found_flag = True
-                                
-                            if break_pt_found_flag:
-                                star_lst.append(potential_bp)
-
-                            prev_pbc = stock_data['p-b change'][i+j]
-
-
-                        j = j + max(next_peak_offset, 1)
-                        if i+j+1 > self.data_len-1:
-                            break
-                    i=i+max(j, 1)
-                i+=1
-
-        elif uptrend_src=='any':  # use other indicator as uptrend source, e.g. MACD or MACD signal
-            i=0
-            while i< self.data_len-2:
-                next_peak_offset=0  
-                if stock_data[trend_col_name][i] >0 and stock_data['type'][i] ==-1 :
-                    
-                    ## find prev little peak
-                    l =0
-                    while stock_data['type'][i+l] !=1:
-                        if i+l-1 >=0:
-                            l-=1
-                        else:
-                            break
-                    prev_peak = close_price[i+l] if l !=0 else prev_peak
-
-                    rise_back_flag = False
-                    break_pt_found_flag = False
-                    potential_bp_found_flag=False
-                    potential_bp = POS_INF
-                    next_peak_found=False
-                    
-                    rise_back_offset=0
-                    k =0
-                    while stock_data[trend_col_name][i+k] >0:
-                        if close_price[i+k] >= prev_peak: # record closest date rise back to prev peak
-                            if not rise_back_flag:
-                                rise_back_offset = k
-                                rise_back_flag = True
-                                potential_bp = i+rise_back_offset
-                                break
-                        if stock_data['type'][i] == 1:
-                            next_peak_offset=k
-                            potential_bp = i+next_peak_offset
-                            break
-                        k +=1
-                        if i+k+1 > self.data_len-1:
-                            break
-                    
-                    if (to_find_bp_flag 
-                        and potential_bp< POS_INF
-                            and ( (not bp_filter_conv_drop) or stock_data['p-b change'][i] > prev_pbc )
-                            and ( (not bp_filter_rising_peak) or rise_back_flag )
-                            ):  
-                        break_pt_found_flag = True
-                    if break_pt_found_flag:
-                        star_lst.append(potential_bp)
-                    prev_pbc = stock_data['p-b change'][i]
-
-                i+=max(1, next_peak_offset)
-
-
-
-
-
-        star_col = stock_data.columns.get_loc('buy pt')
-        for item in star_lst:
-            stock_data.iloc[item, star_col]= 1
+    
         
 
     def set_buy_point(self, source: pd.Series)->pd.Series:
@@ -1137,7 +945,7 @@ class StockAnalyser():
             TO BE IMPLEMENT
 
         """
-        color_list=['fuchsia', 'cyan', 'tomato', 'green', 'peru', 'olive', 'tan', 'darkred']
+        color_list=['mediumslateblue', 'cyan',  'green', 'tomato','peru', 'olive', 'tan', 'darkred']
         color_idx=0
         for i in range(0, len(line_cols)):   
             plt.plot(line_cols[i], label=line_cols[i].name, 
@@ -1183,7 +991,7 @@ class StockAnalyser():
                      alpha=0.6, linewidth=1.5, color=color_list[i])
 
         plt.plot(figsize=figsize, dpi=200)
-        color_list=['fuchsia', 'cyan', 'tomato', 'peru', 'green', 'olive', 'tan', 'darkred']
+        color_list=['fuchsia', 'cyan',  'green', 'tomato','peru', 'olive', 'tan', 'darkred']
 
 
 
@@ -1223,7 +1031,7 @@ class StockAnalyser():
         ax1.set_ylim( UP_PLT_DOWNLIM, UP_PLT_UPLIM)
         ax2.set_ylim(LOW_PLT_DOWNLIM, LOW_PLT_UPLIM)
 
-        color_list=['fuchsia', 'cyan', 'tomato', 'green', 'peru', 'olive', 'tan', 'darkred']
+        color_list=['fuchsia', 'cyan',  'green', 'tomato','peru', 'olive', 'tan', 'darkred']
         color_idx=0
 
         for item in cols:
@@ -1316,7 +1124,7 @@ class StockAnalyser():
             for ind, val in filtered.items():   # item is float
 
                 logger.info(ind.strftime("%Y-%m-%d"))
-                ax1.annotate("Break pt: "+ind.strftime("%Y-%m-%d")+", $"+"{:.2f}".format(val), (ind, val-annot_y_offset), fontsize=4, ha='left', va='top', color='darkgoldenrod')
+                ax1.annotate("BP: "+ind.strftime("%Y-%m-%d")+", $"+"{:.2f}".format(val), (ind, val-annot_y_offset), fontsize=4, ha='left', va='top', color='darkgoldenrod')
 
 
         ### --- cutom plot here  --- ###
@@ -1329,11 +1137,11 @@ class StockAnalyser():
 
         if to_shade_updown and 'MACD' in stock_data and 'slope signal' in stock_data:
             ax1.fill_between(stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=stock_data['slope signal']>0, facecolor='palegreen', alpha=.15)
-            ax1.fill_between(stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=stock_data['slope signal']<0, facecolor='pink', alpha=.15)
+            ax1.fill_between(stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=stock_data['slope signal']<0, facecolor='pink', alpha=.12)
             ax2.plot(stock_data['MACD'], label='MACD', alpha=0.8, linewidth=1, color='indigo')
             ax2.plot(stock_data['signal'], label='signal', alpha=0.8, linewidth=1, color='darkorange')
             ax2.fill_between(stock_data.index, LOW_PLT_UPLIM, LOW_PLT_DOWNLIM, where=stock_data['slope signal']>0, facecolor='palegreen', alpha=.15)
-            ax2.fill_between(stock_data.index, LOW_PLT_UPLIM, LOW_PLT_DOWNLIM, where=stock_data['slope signal']<0, facecolor='pink', alpha=.15)
+            ax2.fill_between(stock_data.index, LOW_PLT_UPLIM, LOW_PLT_DOWNLIM, where=stock_data['slope signal']<0, facecolor='pink', alpha=.12)
             ax2.xaxis.grid(which='major', color='lavender', linewidth=3)
             ax2.xaxis.grid(which='minor', color='lavender', linewidth=3)
 
@@ -1553,7 +1361,7 @@ class StockAnalyser():
         self.__add_col_macd_group(self.close_price)
         
 
-        self._set_breakpoint( trend_col_name=trend_col_name,
+        self.__set_breakpoint( trend_col_name=trend_col_name,
                         bpfilters=bp_filters,
                         ma_short=ma_short_list,
                         ma_long=ma_long_list,
