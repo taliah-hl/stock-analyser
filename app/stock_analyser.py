@@ -16,6 +16,7 @@ import argparse
 import sys
 import enum
 import re
+import os
 
 class DayType(enum.Enum):
     BUYPT=1
@@ -123,10 +124,23 @@ class StockAnalyser():
                 fio.write(tabulate(self.stock_data, headers='keys', tablefmt='psql', floatfmt=("", ".2f",".2f", "g",".2%", "g", "g", )))
             logger.info(f"stock_data wrote to {file_name}")
     
-    def stock_data_to_csv(self, csv_dir: str='../../'):
-        csv_dir = csv_dir+f"stock_data_{self.tickers}_{self.start}_{self.end}.csv"
-        self.stock_data.to_csv(csv_dir)
-        logger.info(f"csv saved to {csv_dir}")
+    def stock_data_to_csv(self, csv_dir: str=None):
+
+        if csv_dir is None:
+            csv_dir='../../back_test_result/'
+        if not os.path.isdir(csv_dir):
+            os.makedirs(csv_dir)
+
+        add_num =1
+        csv_dir += f"/stock_data_{self.tickers}_{self.start}_{self.end}"
+        save_path_norepeat = csv_dir
+        while os.path.isfile(f'{save_path_norepeat}.csv'):
+            save_path_norepeat = csv_dir + f'({add_num})'
+            add_num +=1
+
+        save_path_norepeat += '.csv'
+        self.stock_data.to_csv(save_path_norepeat)
+        logger.info(f"csv saved to {save_path_norepeat}")
 
     def get_peaks(self)-> pd.DataFrame:
         """
@@ -1123,7 +1137,8 @@ class StockAnalyser():
             TO BE IMPLEMENT
 
         """
-        color_list=['cyan', 'peru', 'green', 'olive', 'tan', 'darkred']
+        color_list=['fuchsia', 'cyan', 'tomato', 'green', 'peru', 'olive', 'tan', 'darkred']
+        color_idx=0
         for i in range(0, len(line_cols)):   
             plt.plot(line_cols[i], label=line_cols[i].name, 
                      alpha=0.6, linewidth=1.5, color=color_list[i])
@@ -1208,7 +1223,7 @@ class StockAnalyser():
         ax1.set_ylim( UP_PLT_DOWNLIM, UP_PLT_UPLIM)
         ax2.set_ylim(LOW_PLT_DOWNLIM, LOW_PLT_UPLIM)
 
-        color_list=['fuchsia', 'cyan', 'tomato', 'peru', 'green', 'olive', 'tan', 'darkred']
+        color_list=['fuchsia', 'cyan', 'tomato', 'green', 'peru', 'olive', 'tan', 'darkred']
         color_idx=0
 
         for item in cols:
@@ -1423,7 +1438,7 @@ class StockAnalyser():
            ma_short_list: list=[], ma_long_list=[],
            plot_ma: list=[],
            extra_text_box:str='',
-           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6,
+           graph_showOption: str='show', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
            csv_dir: str=None) ->pd.DataFrame:
 
         """
@@ -1579,9 +1594,21 @@ class StockAnalyser():
             plot_end = time.time()
 
             if graph_showOption == 'save':
-                plt.savefig(graph_dir)
+                if graph_dir is None:
+                    graph_dir='../../graph/'
+                if not os.path.isdir(graph_dir):
+                    os.makedirs(graph_dir)
+                
+                graph_dir += f'/{self.tickers}_{self.start}_{self.end}'
+                add_num =1
+                dir_norepeat = graph_dir
+                while os.path.isfile(f'{dir_norepeat}.png'):
+                    dir_norepeat = graph_dir + f'({add_num})'
+                    add_num +=1
+                dir_norepeat += '.png'
+                plt.savefig(dir_norepeat)
                 plt.close()
-                logger.info(f"graph saved as {graph_dir}")
+                logger.info(f"graph saved as {dir_norepeat}")
             else:
                 plt.show()
                 logger.info("graph shown")
@@ -1785,7 +1812,7 @@ if __name__ == "__main__":
                 ma_long_list=[9, 50],
                 bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
                 figsize=graph_figsize, annotfont=4,
-                graph_dir=f'{graph_file_dir}_{item}.png',
+                graph_dir=graph_file_dir,
                 extra_text_box='',
                  graph_showOption=graph_show_opt,
                  csv_dir=csv_dir )
@@ -1796,14 +1823,25 @@ if __name__ == "__main__":
 
     ## run one stock from cmd
     else:
+        # filter: peak bottom and sma above
+        # default_analyser_runner(stockticker, stockstart, stockend,
+        #         method='close', 
+        #         ma_short_list=[3, 50],
+        #         ma_long_list=[13, 150],
+        #         bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
+        #         figsize=graph_figsize, annotfont=3,
+        #         graph_dir=graph_file_dir,
+        #         graph_showOption=graph_show_opt,
+        #         csv_dir=csv_dir )
 
+        # filter:sma cross
         default_analyser_runner(stockticker, stockstart, stockend,
                 method='close', 
-                ma_short_list=[3,20],
-                ma_long_list=[9,50],
-                bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
+                ma_short_list=[3, 50],
+                ma_long_list=[13, 150],
+                bp_filters={  BuyptFilter.SMA_short_above_long},
                 figsize=graph_figsize, annotfont=3,
-                graph_dir=f'{graph_file_dir}_{stockticker}.png',
+                graph_dir=graph_file_dir,
                 graph_showOption=graph_show_opt,
                 csv_dir=csv_dir )
     

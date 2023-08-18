@@ -26,12 +26,12 @@ class Action(enum.Enum):
 
 class BuyStrategy(enum.Enum):
     Default=0
-    Uptrend_converging_bottom =1
+    Follow_buypt_filter =1
 
 class SellStrategy(enum.Enum):
     Default=0
     Trailing_stop =1
-    Buy_and_hold=2
+    Hold_til_end=2
     Profit_target=3
     Fixed_stop_loss=4
     Trailing_and_fixed_stoploss =5
@@ -46,14 +46,10 @@ class StockAccount():
         self.initial_capital=initial_capital
         self.stock_analyser = None
         self.txn: pd.DataFrame=None
-        self._revenue: float=None
+        self.revenue: float=None
+        self.revenue_buy_and_hold: float=None
+        self.no_of_trade: int=0
 
-    def roll(self, res):
-        """
-        TO BE IMPLEMENT
-        """
-        #self.txn = res
-        return self.txn
     
     def print_txn(self):
         logger.debug(f"----  Transaction Table of {self.ticker}  ----")
@@ -61,32 +57,48 @@ class StockAccount():
 
     def txn_to_csv(self, save_path:str=None, textbox: str=None):
         if save_path is None:
-            save_path = f"../../back_test_result/roll_result_{self.ticker}_{self.start}_{self.end}.csv"
-        else:
-            save_path = save_path+f"roll_result_{self.ticker}_{self.start}_{self.end}.csv"
-        self.txn.to_csv(save_path)
-        with open(save_path, 'a') as fio:
+            save_path='../../back_test_result/'
+        if not os.path.isdir(save_path):
+            os.makedirs(save_path)
+
+        add_num =1
+        save_path += f"/roll_result_{self.ticker}_{self.start}_{self.end}"
+        save_path_norepeat = save_path
+        while os.path.isfile(f'{save_path_norepeat}.csv'):
+            save_path_norepeat = save_path + f'({add_num})'
+            add_num +=1
+
+        save_path_norepeat += '.csv'
+
+        self.cal_revenue()
+        self.cal_buy_and_hold()
+        self.txn.to_csv(save_path_norepeat)
+        with open(save_path_norepeat, 'a') as fio:
             fio.write(textbox)
+            fio.write('\n')
+            fio.write('revenue: ,'+'{:.2%}'.format(self.revenue) + ', {:.2f}\n'.format(self.initial_capital * (self.revenue) ))
+            fio.write('revenue if buy and hold: ,')
+            fio.write('{:.2%}'.format(self.revenue_buy_and_hold) +', {:.2f}\n'.format(self.initial_capital * (self.revenue_buy_and_hold) ))
+            fio.write('no. of trade: ,' + str(self.no_of_trade))
+            
 
-        logger.info(f"csv saved to {save_path}")
+        logger.info(f"csv saved to {save_path_norepeat}")
 
+        
     def cal_revenue(self):
         if self.txn is not None:
-            return (self.txn['cash'][-1] - self.initial_capital)/self.initial_capital
+            self.revenue = (self.txn['cash'][-1] - self.initial_capital)/self.initial_capital
+            return self.revenue
         else:
             logger.warning("no transaction, cannot get revenue, you may want to roll the ACC first.")
             return None
-        
-    def set_revenue(self):
-        if self.txn is not None:
-            self._revenue = (self.txn['cash'][-1] - self.initial_capital)/self.initial_capital
 
     def get_revenue(self):
-        if self._revenue is not None:
-            return self._revenue
-        elif (self._revenue is None) and (self.txn is not None):
+        if self.revenue is not None:
+            return self.revenue
+        elif (self.revenue is None) and (self.txn is not None):
             self.set_revenue()
-            return self._revenue
+            return self.revenue
         else:
             logger.warning("no transaction, cannot get revenue, you may want to roll the ACC first.")
             return None
@@ -97,13 +109,29 @@ class StockAccount():
         else:
             logger.warning("no transaction, cannot get final capital, you may want to roll the ACC first.")
             return None
+    
+    def cal_buy_and_hold(self):
+        """
+        calculate revenue of buying at first day and selling at last day as control group
+        set function of self.revenue_buy_and_hold
+        """
+        if self.txn is not None:
+            buy_share = math.floor(self.initial_capital/ self.txn['close price'][0])
+            money_left = self.initial_capital- buy_share * self.txn['close price'][0]
+            sold = buy_share * self.txn['close price'][-1]
+            money_left = money_left+sold
+            self.revenue_buy_and_hold = (money_left - self.initial_capital) /self.initial_capital
+        else:
+            logger.warning("no transaction, cannot calculate buy and hold, you may want to roll the ACC first.")
+            return
+
 
 
 class BackTest():
 
     def __init__(self):
         pass
-        self.buy_strategy: BuyStrategy=BuyStrategy.Uptrend_converging_bottom
+        self.buy_strategy: BuyStrategy=BuyStrategy.Follow_buypt_filter
         self.sell_strategy: SellStrategy=SellStrategy.Trailing_stop
         self.sell_signal: str=''
         self.sell_signal: str=''
@@ -121,6 +149,7 @@ class BackTest():
         self.actionDates: dict  # dict of list of str (date)
         self.profit_target=float('inf')
         self.bp_filters=set()
+        self.trade_tmie_of_ac: int=0
 
 
     def set_buy_strategy(self, strategy, buypt_filters: set=set()):
@@ -169,10 +198,9 @@ class BackTest():
         stock = sa.StockAnalyser()
         if not bp_filters:
             bp_filters = self.bp_filters
-        if graph_dir is None:
-            graph_dir=f'../../{ticker}_{start}_{end}'
 
-        if self.buy_strategy == BuyStrategy.Uptrend_converging_bottom:
+
+        if self.buy_strategy == BuyStrategy.Follow_buypt_filter:
 
             self._stock_table = stock.default_analyser(
                 tickers=ticker, start=start, end=end,
@@ -221,6 +249,7 @@ class BackTest():
         cur_row['share'] = prev_row['share'] + share
         cur_row['MV'] = cur_row['close price'] * cur_row['share']
         cur_row['cash'] = prev_row['cash'] - cur_row['txn amt']
+        self.trade_tmie_of_ac +=1
         return cur_row
 
         
@@ -289,6 +318,7 @@ class BackTest():
         except Exception as err:
             logger.error(err)
             return None
+        self.trade_tmie_of_ac = 0
 
         
         # self.stock_table set after set fn
@@ -472,7 +502,7 @@ def runner(tickers, start:str, end:str, capital:float,
         ac = StockAccount(tickers, start, end, capital)
         logger.info(f'---- **** Back Test of {tickers} stated **** ---')
         back_test = BackTest()
-        back_test.set_buy_strategy(BuyStrategy.Uptrend_converging_bottom, bp_filters)
+        back_test.set_buy_strategy(BuyStrategy.Follow_buypt_filter, bp_filters)
         back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_st=fixed_st, profit_target=profit_target)
         ac.txn = back_test.roll(ac,
                                trend_col_name=trend_col_name,
@@ -484,11 +514,16 @@ def runner(tickers, start:str, end:str, capital:float,
                                 csv_dir=csv_dir
 
                                   )
+        ac.no_of_trade = back_test.trade_tmie_of_ac
         
         rev=ac.cal_revenue()
-        if print_all_ac:
-            ac.print_txn()
-            ac.txn_to_csv(save_path=csv_dir, textbox=f'{tickers}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}\nrevenue: {rev}')
+       
+        ac.print_txn()
+        str_to_print = f'{tickers}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}\n'
+        for item in back_test.bp_filters:
+            str_to_print+= str(item)+', '
+
+        ac.txn_to_csv(save_path=csv_dir, textbox=str_to_print)
         
         logger.debug(f"revenue of {tickers}: {rev}")
         logger.info(f" Back Test of {tickers} done")
@@ -498,7 +533,7 @@ def runner(tickers, start:str, end:str, capital:float,
     elif isinstance(tickers, list):
 
         back_test = BackTest()
-        back_test.set_buy_strategy(BuyStrategy.Uptrend_converging_bottom, bp_filters)
+        back_test.set_buy_strategy(BuyStrategy.Follow_buypt_filter, bp_filters)
         back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_st=fixed_st, profit_target=profit_target)
 
         acc_list=[]
@@ -524,7 +559,10 @@ def runner(tickers, start:str, end:str, capital:float,
             rev=ac.cal_revenue()
             if print_all_ac and ac.txn is not None:
                 ac.print_txn()
-                ac.txn_to_csv(save_path=csv_dir, textbox=f'{item}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}\nrevenue: {rev}')
+                str_to_print = f'{item}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}'
+                for b in back_test.bp_filters:
+                    str_to_print+= str(b)+', '
+                ac.txn_to_csv(save_path=csv_dir, textbox=str_to_print)
             
             try:
                 total_finl_cap += ac.cal_final_capital()
@@ -587,7 +625,7 @@ def yearly_test():
         logger.info(f'processing start date: {dt}, end date: {enddt}')
         
         revenue = runner(lines, dt, enddt, 10000, SellStrategy.Trailing_stop, ts_percent=ts_percent,  
-                print_all_ac=False, csv_dir=csv_dir)
+                print_all_ac=True, csv_dir=csv_dir)
         fiores.write(f'{dt},{enddt},{revenue}\n')
 
         
@@ -635,8 +673,8 @@ if __name__ == "__main__":
     parser.add_argument('--sell', '-p', help='sell strategy, number code same as class SellStrategy', type=int, default=5)
 
     parser.add_argument('--stocklist_file', '-f', help='stock list file dir', type=str, default=None)
-    parser.add_argument('--csv_dir', '-v', help='csv folder dir (file name is pre-set), default=../../', type=str, default='../../')
-    parser.add_argument('--graph_dir', '-g',type=str, default='../../untitled')  # no .png
+    parser.add_argument('--csv_dir', '-v', help='csv folder dir (file name is pre-set), default=../../', type=str, default='../../result/')
+    parser.add_argument('--graph_dir', '-g',type=str, default='../../result/')  # no .png
     parser.add_argument('--figsize', type=tuple, default=(40,20))
     parser.add_argument('--figdpi', type=int, default=200)
     parser.add_argument('--showopt', '-o', help='graph show option: \'save\', \'show\', \'no\'', type=str, default='save')
@@ -681,19 +719,31 @@ if __name__ == "__main__":
                bp_filters={sa.BuyptFilter.Converging_drop, sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.SMA_short_above_long},
                 ma_short_list=[50,3],
                 ma_long_list=[200,15],
-                graph_showOption='no',
-               print_all_ac=False, csv_dir=csv_dir)
+                graph_showOption=graph_show_opt,
+               print_all_ac=True, csv_dir=csv_dir)
 
     ## run one stock from cmd
     else:
+        # filter: peak bottom and sma above
+        # runner(stockticker, stockstart, stockend, capital, 
+        #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
+        #        bp_filters={sa.BuyptFilter.Converging_drop, sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.SMA_short_above_long},
+        #         ma_short_list=[3, 50],
+        #         ma_long_list=[13, 150],
+        #         graph_showOption=graph_show_opt,
+        #         graph_dir=graph_file_dir,
+        #        print_all_ac=True, csv_dir=csv_dir)
+        
+        # filter:sma cross only
         runner(stockticker, stockstart, stockend, capital, 
                SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-               bp_filters={sa.BuyptFilter.Converging_drop, sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.SMA_short_above_long},
-                ma_short_list=[3],
-                ma_long_list=[9],
-                graph_showOption='save',
+               bp_filters={sa.BuyptFilter.In_uptrend, sa.BuyptFilter.SMA_short_above_long},
+                ma_short_list=[3, 50],
+                ma_long_list=[13, 150],
+                graph_showOption=graph_show_opt,
                 graph_dir=graph_file_dir,
                print_all_ac=True, csv_dir=csv_dir)
+
 
     end=time.time()
     logger.info(f"time taken for whole run: {end-start}")
@@ -704,7 +754,7 @@ if __name__ == "__main__":
 
 ## save graph and save roll result csv
 # python backtest.py -s=2022-08-01 -e=2023-08-16 -t=pdd -c=10000 -o=no -v=../../back_test_result/
-# python backtest.py -s=2022-08-01 -e=2023-08-16 -t=pdd -c=10000 -o=save -v=../../back_test_result/ -g=../../PDD
+# python backtest.py -s=2022-08-01 -e=2023-08-16 -t=pdd -c=10000 -o=save -v=../../back_test_result/ -g=../../back_test_result/PDD_0816 --figsize=(50,20)
     
 
 
