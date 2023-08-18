@@ -32,6 +32,9 @@ class BuyptFilter(enum.Enum):
     SMA_short_above_long = 4
     RSI_over =5
 
+    ### ADD FILTER EXAMPLE
+    Some_filter = 99
+
 class StockAnalyser():
 
     ## CONSTANT ##
@@ -775,6 +778,33 @@ class StockAnalyser():
             self.add_col_rsi(stock_data)
         return stock_data['rsi'][row] > thres
 
+
+    ### ADD FILTER EXAMPLE
+
+    ## 1. add an "add column function"
+    def add_col_something(self, stock_data: pd.DataFrame)->pd.DataFrame:
+        """
+        EXAMPLE FUNCTION
+        """
+        #stock_data['something'] = something
+        # return stock_data['something']
+
+        pass
+    
+    ## 2. add a function to check if row of some column meet certain condition
+
+    def is_some_condition_met(self,  stock_data: pd.DataFrame, row: int, some_arg)->bool:
+        """
+        EXAMPLE FUNCTION
+        
+        input:    - row: index of row to check
+        return: bool
+        """
+        res: bool
+        # res = stock_data['some column'][row] > 1    # just an example
+        # return res
+        return True     # this is only example, so return True here
+        
     
     def __set_breakpoint(self, 
                        trend_col_name: str=None,
@@ -826,6 +856,9 @@ class StockAnalyser():
         sma_abv_filter = True if BuyptFilter.SMA_short_above_long in bpfilters else False
         rsi_abv_filter = True if BuyptFilter.RSI_over in bpfilters else False
 
+        ### ADD FILTER EXAMPLE
+        some_filter = True if BuyptFilter.Some_filter in bpfilters else False
+
 
         in_uptrend_flag: bool=None
         conv_drop_flag: bool=None
@@ -859,6 +892,10 @@ class StockAnalyser():
             logger.debug("in up trend", sep='')
         if rsi_abv_filter:
             logger.debug("rsi above", sep='')
+
+        ### ADD FILTER EXAMPLE
+        if some_filter:
+            logger.debug("some filter", sep='')
         
         # since point of converging bottom and rising peak is sparse
         # if converging bottom or rising peak filter is applied, 
@@ -885,7 +922,9 @@ class StockAnalyser():
 
                 if (   ( (not sma_abv_filter) or self.is_ma_above(self.stock_data, idx, ma_short, ma_long))
                     and ( (not rsi_abv_filter) or self.is_rsi_above(self.stock_data, idx, rsi_thres))
+                    and ( (not some_filter) or self.is_some_condition_met(self.stock_data, idx, rsi_thres)) ### ADD FILTER EXAMPLE
                     ):
+                    ### some_filter is JUST EXMAPLE !!
 
                     buy_point_found=True
                     buy_point_list.append(idx)
@@ -901,7 +940,9 @@ class StockAnalyser():
                         (not uptr_filter or self.__is_uptrend(idx, trend_col_name, zz_thres))
                     and (not sma_abv_filter or self.is_ma_above(self.stock_data, idx, ma_short, ma_long))
                     and (not rsi_abv_filter or self.is_rsi_above(self.stock_data, idx, rsi_thres))
+                    and ( (not some_filter) or self.is_some_condition_met(self.stock_data, idx, rsi_thres)) ### ADD FILTER EXAMPLE
                     ):
+                    ### some_filter is JUST EXMAPLE !!
                     buy_point_found=True
                     buy_point_list.append(idx)
 

@@ -744,6 +744,14 @@ if __name__ == "__main__":
                 graph_showOption=graph_show_opt,
                 graph_dir=graph_file_dir,
                print_all_ac=True, csv_dir=csv_dir)
+        
+         ### ADD FILTER EXAMPLE
+        runner(stockticker, stockstart, stockend, capital, 
+               SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
+               bp_filters={sa.BuyptFilter.Some_filter},     # pass filter here
+                graph_showOption=graph_show_opt,
+                graph_dir=graph_file_dir,
+               print_all_ac=True, csv_dir=csv_dir)
 
 
     end=time.time()
