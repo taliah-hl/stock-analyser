@@ -1,0 +1,18 @@
+{
+    "ticker": "pdd",
+    "start": "2022-08-01",
+    "end": "2023-08-20",
+    "buy point filters": [
+      "IN_UPTREND",
+      "CONVERGING_DROP",
+      "RISING_PEAK"
+    ],
+    "stop loss percent": 0.03,
+    "buy strategy": "FOLLOW_BUYPT_FILTER",
+    "sell strategy": ["TRAILING_STOP"],
+    "graph show option": "no",
+    "graph dir": "../result",
+    "csv dir": "../result",
+    "print_all_ac": false
+  }
+  

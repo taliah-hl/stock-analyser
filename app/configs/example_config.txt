@@ -1,0 +1,33 @@
+### Example  config
+### this is example only, and is not valid json
+
+{
+  "ticker": "pdd",
+  "start": "2022-08-01",
+  "end": "2023-08-20",
+  "ma_short_list": [3, 20],
+  "ma_long_list": [9, 50],
+    # with this setting MA3 is compared vs MA9, MA20 is compared vs 50
+   "plot ma": ['ma3', 'ema9', 'ma15'],  # extra ma to plot on graph, but will not affect buy point 
+   "graph show option": 'save' # available opt: 'save', 'show', 'no'
+  "graph_showOption": "save",
+  "graph dir": "../result",
+  "csv dir" : "../result",
+  "print_all_ac": false # if ticker is a list, whether to print roll result of each ticker
+}
+
+## can copy and paste the following json
+
+{
+  "ticker": "pdd",
+  "start": "2022-08-01",
+  "end": "2023-08-20",
+  "ma_short_list": [3, 20],
+  "ma_long_list": [9, 50],
+  "plot ma": ["ma3", "ema9", "ma15"],
+  "graph show option": "save",
+  "graph_showOption": "save",
+  "graph dir": "../result",
+  "csv dir": "../result",
+  "print_all_ac": false
+}

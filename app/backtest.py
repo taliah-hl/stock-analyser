@@ -8,7 +8,7 @@ import math
 from tabulate import tabulate
 import time
 from datetime import date, timedelta, datetime
-import argparse
+import argparse, json
 import sys
 import enum
 import os
@@ -25,18 +25,19 @@ class Action(enum.Enum):
     NAN=0
 
 class BuyStrategy(enum.Enum):
-    Default=0
-    Follow_buypt_filter =1
+    DEFAULT=0
+    FOLLOW_BUYPT_FILTER =1
+    SOME_UNKNOWN_STRATEGY = 99
 
 class SellStrategy(enum.Enum):
-    Default=0
-    Trailing_stop =1
-    Hold_til_end=2
-    Profit_target=3
-    Fixed_stop_loss=4
-    Trailing_and_fixed_stoploss =5
-    TS_FSL_PT=5
-    Mix=10
+    DEFAULT=0
+    TRAILING_STOP  =1
+    HOLD_TIL_END=2
+    PROFIT_TARGET=3
+    FIXED_STOP_LOSS=4
+    TRAILING_AND_FIXED_SL  =5
+    TRAIL_FIX_SL_AND_PROFTARGET=5
+    MIX=10
 
 class StockAccount():
     def __init__(self, ticker: str, start: str, end: str,initial_capital: int):
@@ -131,8 +132,8 @@ class BackTest():
 
     def __init__(self):
         pass
-        self.buy_strategy: BuyStrategy=BuyStrategy.Follow_buypt_filter
-        self.sell_strategy: SellStrategy=SellStrategy.Trailing_stop
+        self.buy_strategy: BuyStrategy=BuyStrategy.FOLLOW_BUYPT_FILTER
+        self.sell_strategy: SellStrategy=SellStrategy.TRAILING_STOP 
         self.sell_signal: str=''
         self.sell_signal: str=''
         self.stock_table=None
@@ -152,25 +153,23 @@ class BackTest():
         self.trade_tmie_of_ac: int=0
 
 
-    def set_buy_strategy(self, strategy, buypt_filters: set=set()):
-        self.buy_strategy = strategy
+    def set_buy_strategy(self, strategy=None, buypt_filters: set=set()):
+        if strategy is not None:
+            self.buy_strategy = strategy
         self.bp_filters = buypt_filters
 
 
     def set_sell_strategy(self, strategy, ts_percent: float=None, 
-                          profit_target: float=None, fixed_st: float=None):
+                          profit_target: float=None, fixed_sl: float=None):
         self.sell_strategy = strategy
 
-        if strategy==SellStrategy.Trailing_stop:
-            
-            if pd.isna(ts_percent):
-                raise Exception("sell strategy selected as trailing stop, but trail stop percentage not provided!\n provide trail stop percentage in ts_percent in BackTest.set_sell_strategy()\nprogram exit.")
-                
+        if not pd.isna(ts_percent):
             self.trail_loss_percent = ts_percent
-        elif strategy==SellStrategy.TS_FSL_PT or strategy==SellStrategy.Trailing_and_fixed_stoploss:
-            self.trail_loss_percent = ts_percent
+        if not pd.isna(profit_target):
             self.profit_target=profit_target
-            self.fixed_st=fixed_st
+        if not pd.isna(fixed_sl):
+            self.fixed_st=fixed_sl
+
 
     def set_buy_signal(self):
         pass
@@ -200,7 +199,7 @@ class BackTest():
             bp_filters = self.bp_filters
 
 
-        if self.buy_strategy == BuyStrategy.Follow_buypt_filter:
+        if self.buy_strategy == BuyStrategy.FOLLOW_BUYPT_FILTER:
 
             self._stock_table = stock.default_analyser(
                 tickers=ticker, start=start, end=end,
@@ -216,7 +215,11 @@ class BackTest():
                 csv_dir=csv_dir
             )
             return stock
-        
+        else:
+            
+            logger.warning(f"buy strategy receive: {self.buy_strategy}, which is not configurated, program exit.")
+            exit(0)
+
     def sell(self, prev_row: dict, cur_row: dict, trigger_price: float, portion: float=1, last_buy_date=None, trigger: str=None)->dict:
         """
         - portion: portion of holding to sell
@@ -260,13 +263,15 @@ class BackTest():
             input: prev row
             return: cur row, bool: True=sold, False=not sold
         """
+        print("check sell triggered")
         
-        if strategy== SellStrategy.Trailing_stop:
+        if self.sell_strategy== SellStrategy.TRAILING_STOP :
             if cur_price < (latest_high * (1-self.trail_loss_percent)):
                 # sell
+                print("sell triggered")
                 cur_row = self.sell(prev_row, cur_row, trigger_price= math.floor(latest_high * (1-self.trail_loss_percent)*100)/100, trigger='trail stop')
                 return (cur_row, True)
-        elif strategy==SellStrategy.TS_FSL_PT or strategy==SellStrategy.Trailing_and_fixed_stoploss:
+        elif self.sell_strategy==SellStrategy.TRAIL_FIX_SL_AND_PROFTARGET or self.sell_strategy==SellStrategy.TRAILING_AND_FIXED_SL :
             if (self.trail_loss_percent is not None 
                 and cur_price < (latest_high * (1-self.trail_loss_percent)) ):
                 cur_row = self.sell(prev_row, cur_row, trigger_price=math.floor(latest_high*(1-self.trail_loss_percent)*100)/100, trigger='trail stop')
@@ -486,7 +491,7 @@ class BackTest():
 
 def runner(tickers, start:str, end:str, capital:float, 
            sell_strategy, ts_percent: float=None, fixed_st: float=None, profit_target:  float=None,
-           buy_strategy=None,
+           buy_strategy=BuyStrategy.FOLLOW_BUYPT_FILTER,
            trend_col_name: str='slope signal',
            bp_filters: set=set(),
            ma_short_list: list=[], ma_long_list=[],
@@ -503,8 +508,12 @@ def runner(tickers, start:str, end:str, capital:float,
         ac = StockAccount(tickers, start, end, capital)
         logger.info(f'---- **** Back Test of {tickers} stated **** ---')
         back_test = BackTest()
-        back_test.set_buy_strategy(BuyStrategy.Follow_buypt_filter, bp_filters)
-        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_st=fixed_st, profit_target=profit_target)
+        back_test.set_buy_strategy(buy_strategy, bp_filters)
+        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_sl=fixed_st, profit_target=profit_target)
+
+
+        print("ts percent:", back_test.trail_loss_percent)
+        print("sell strategy:" , back_test.sell_strategy)
         ac.txn = back_test.roll(ac,
                                trend_col_name=trend_col_name,
                                 bp_filters=bp_filters,
@@ -534,8 +543,8 @@ def runner(tickers, start:str, end:str, capital:float,
     elif isinstance(tickers, list):
 
         back_test = BackTest()
-        back_test.set_buy_strategy(BuyStrategy.Follow_buypt_filter, bp_filters)
-        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_st=fixed_st, profit_target=profit_target)
+        back_test.set_buy_strategy(BuyStrategy.FOLLOW_BUYPT_FILTER, bp_filters)
+        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_sl=fixed_st, profit_target=profit_target)
 
         acc_list=[]
         total_finl_cap=0
@@ -625,7 +634,7 @@ def yearly_test():
         enddt=dt+pd.DateOffset(months=12)
         logger.info(f'processing start date: {dt}, end date: {enddt}')
         
-        revenue = runner(lines, dt, enddt, 10000, SellStrategy.Trailing_stop, ts_percent=ts_percent,  
+        revenue = runner(lines, dt, enddt, 10000, SellStrategy.TRAILING_STOP , ts_percent=ts_percent,  
                 print_all_ac=True, csv_dir=csv_dir)
         fiores.write(f'{dt},{enddt},{revenue}\n')
 
@@ -648,7 +657,7 @@ if __name__ == "__main__":
     )
     logger.add(
         f"../../BackTest_{date.today()}_log.log",
-        level='INFO'
+        level='DEBUG'
 
     )
     logger.info("-- ****  NEW RUN START **** --")
@@ -679,6 +688,9 @@ if __name__ == "__main__":
     parser.add_argument('--figsize', type=tuple, default=(40,20))
     parser.add_argument('--figdpi', type=int, default=200)
     parser.add_argument('--showopt', '-o', help='graph show option: \'save\', \'show\', \'no\'', type=str, default='save')
+    parser.add_argument('--configfile', '-j', 
+                        help='json config file for argument to pass to backtest.runner, if set, will ignore other arguments in command line', 
+                        type=str, default=None)
     args=parser.parse_args()
 
     stockticker=args.ticker
@@ -690,69 +702,140 @@ if __name__ == "__main__":
         stockticker=stockticker.upper()
         logger.info(f"stock given in cmd prompt: {stockticker}")
 
-    stockstart = args.start
-    stockend = args.end
-    capital= args.capital
-    sells=args.sell
-    buys=args.buy
-    stock_lst_file = args.stocklist_file
-    graph_file_dir = args.graph_dir
-    graph_figsize=args.figsize
-    graph_dpi=args.figdpi
-    graph_show_opt=args.showopt
-    csv_dir=args.csv_dir
+    
+    configfile = args.configfile
 
     #yearly_test()
     #end=time.time()
     #logger.info(f"time taken for whole run: {end-start}")
     #exit(0)
 
-    if stock_lst_file != None:
-        logger.info(f"stock list file got: {stock_lst_file}")
-        with open(stock_lst_file, 'r') as fio:
-            lines = fio.readlines()
-        
-        for item in lines:
-            item=re.sub(r'\W+', '', item)
-            
-        runner(lines, stockstart, stockend, capital, 
-               SellStrategy.Trailing_stop, ts_percent=0.05,  
-               bp_filters={sa.BuyptFilter.Converging_drop, sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.SMA_short_above_long},
-                ma_short_list=[50,3],
-                ma_long_list=[200,15],
-                graph_showOption=graph_show_opt,
-               print_all_ac=True, csv_dir=csv_dir)
+    if configfile is None:
+        stockstart = args.start
+        stockend = args.end
+        capital= args.capital
+        sells=args.sell
+        buys=args.buy
+        stock_lst_file = args.stocklist_file
+        graph_file_dir = args.graph_dir
+        graph_figsize=args.figsize
+        graph_dpi=args.figdpi
+        graph_show_opt=args.showopt
+        csv_dir=args.csv_dir
 
-    ## run one stock from cmd
-    else:
-        # filter: peak bottom and sma above
-        # runner(stockticker, stockstart, stockend, capital, 
-        #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-        #        bp_filters={sa.BuyptFilter.Converging_drop, sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.SMA_short_above_long},
-        #         ma_short_list=[3, 50],
-        #         ma_long_list=[13, 150],
-        #         graph_showOption=graph_show_opt,
-        #         graph_dir=graph_file_dir,
-        #        print_all_ac=True, csv_dir=csv_dir)
-        
-        # filter:sma cross only
-        runner(stockticker, stockstart, stockend, capital, 
-               SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-               bp_filters={sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.Converging_drop},
-                ma_short_list=[3],
-                ma_long_list=[9],
+        if stock_lst_file != None:
+            logger.info(f"stock list file got: {stock_lst_file}")
+            with open(stock_lst_file, 'r') as fio:
+                lines = fio.readlines()
+            
+            for item in lines:
+                item=re.sub(r'\W+', '', item)
                 
+            runner(lines, stockstart, stockend, capital, 
+                SellStrategy.TRAILING_STOP , ts_percent=0.05,  
+                bp_filters={sa.BuyptFilter.CONVERGING_DROP, sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.SMA_SHORT_ABOVE_LONG},
+                    ma_short_list=[50,3],
+                    ma_long_list=[200,15],
+                    graph_showOption=graph_show_opt,
+                print_all_ac=True, csv_dir=csv_dir)
+
+        ## run one stock from cmd
+        else:
+            # filter: peak bottom and sma above
+            # runner(stockticker, stockstart, stockend, capital, 
+            #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
+            #        bp_filters={sa.BuyptFilter.CONVERGING_DROP, sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.SMA_SHORT_ABOVE_LONG},
+            #         ma_short_list=[3, 50],
+            #         ma_long_list=[13, 150],
+            #         graph_showOption=graph_show_opt,
+            #         graph_dir=graph_file_dir,
+            #        print_all_ac=True, csv_dir=csv_dir)
+            
+            # filter:sma cross only
+            runner(stockticker, stockstart, stockend, capital, 
+                SellStrategy.TRAILING_AND_FIXED_SL , ts_percent=0.05,
+                bp_filters={sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.CONVERGING_DROP},
+                    ma_short_list=[3],
+                    ma_long_list=[9],
+                    
+                    graph_showOption=graph_show_opt,
+                    graph_dir=graph_file_dir,
+                print_all_ac=True, csv_dir=csv_dir)
+            
+            ### ADD FILTER EXAMPLE
+            # runner(stockticker, stockstart, stockend, capital, 
+            #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
+            #        bp_filters={sa.BuyptFilter.Some_filter},     # pass filter here
+            #         graph_showOption=graph_show_opt,
+            #         graph_dir=graph_file_dir,
+            #        print_all_ac=True, csv_dir=csv_dir)
+    else:
+        with open(configfile, encoding = 'utf-8') as fio:
+            confjson = json.load(fio)
+        
+        stockticker= confjson['ticker']
+        stockstart = confjson['start']
+        stockend= confjson['end']
+        capital = confjson.get("capital", 10000)
+        ts_percent = confjson.get("stop loss percent", 0.05)
+        bp_filters_list = confjson.get("buy point filters", [])
+        sell_strategy_list = confjson.get("sell strategy", [])
+        buy_strategy_str = confjson.get("buy strategy", None)
+        
+        ma_short_list = confjson.get("ma short", [])
+        ma_long_list = confjson.get("ma long", [])
+        plot_ma = confjson.get("plot ma", [])
+        graph_show_opt =confjson.get("graph show option", 'no')
+        graph_file_dir = confjson.get("graph dir", '../../result')
+        csv_dir = confjson.get("csv dir", '../../result')
+        print_all_ac =confjson.get("print all ac", False)
+        
+
+        bp_filter = set()
+        sell_stra_set = set()
+        buy_strategy = None
+
+        bp_filters_list = [item.upper() for item in bp_filters_list]
+        sell_strategy_list = [item.upper() for item in sell_strategy_list]
+
+
+        for data in sa.BuyptFilter:
+            if data.name in bp_filters_list:
+                bp_filter.add(data)
+        
+        for data in SellStrategy:
+            if data.name in sell_strategy_list:
+                sell_stra_set.add(data)
+
+        if isinstance(buy_strategy_str, str):
+            buy_strategy_str.upper()
+        for data in BuyStrategy:
+            if data.name == buy_strategy_str:
+                buy_strategy = data
+
+        logger.debug("config received from config file json:")
+        logger.debug(confjson)
+
+        print(sell_stra_set)
+
+
+        runner(stockticker, stockstart, stockend, capital, 
+               buy_strategy=buy_strategy,
+              sell_strategy=sell_stra_set, 
+              ts_percent=ts_percent,
+                bp_filters=bp_filter,
+                ma_short_list=ma_short_list,
+                ma_long_list=ma_long_list,
+                plot_ma= plot_ma,
                 graph_showOption=graph_show_opt,
                 graph_dir=graph_file_dir,
-               print_all_ac=True, csv_dir=csv_dir)
-        
-         ### ADD FILTER EXAMPLE
-        # runner(stockticker, stockstart, stockend, capital, 
-        #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-        #        bp_filters={sa.BuyptFilter.Some_filter},     # pass filter here
-        #         graph_showOption=graph_show_opt,
-        #         graph_dir=graph_file_dir,
-        #        print_all_ac=True, csv_dir=csv_dir)
+                print_all_ac=print_all_ac, csv_dir=csv_dir)
+
+
+
+
+
+
 
 
     end=time.time()
