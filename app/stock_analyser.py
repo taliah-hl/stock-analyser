@@ -1075,6 +1075,8 @@ class StockAnalyser():
         color_list=['fuchsia', 'cyan',  'green', 'tomato','peru', 'olive', 'tan', 'darkred']
         color_idx=0
 
+        ## PLOT EXTRA COLUMNS (including MAs) here
+
         for item in cols:
             line_sty='dashed' if 'ma' in item else '-' 
             ax1.plot(stock_data[item], 
@@ -1165,7 +1167,7 @@ class StockAnalyser():
             for ind, val in filtered.items():   # item is float
 
                 logger.info(ind.strftime("%Y-%m-%d"))
-                ax1.annotate("BP: "+ind.strftime("%Y-%m-%d")+", $"+"{:.2f}".format(val), (ind, val-annot_y_offset), fontsize=4, ha='left', va='top', color='darkgoldenrod')
+                ax1.annotate("BP: "+ind.strftime("%Y-%m-%d")+", $"+"{:.2f}".format(val), (ind, val-annot_y_offset), fontsize=annotfont, ha='left', va='top', color='darkgoldenrod')
 
 
         ### --- cutom plot here  --- ###
@@ -1204,7 +1206,7 @@ class StockAnalyser():
                 ax1.scatter(stock_data[stock_data['zigzag'] ==1].index, stock_data[stock_data['zigzag'] ==1]['close'], color='lime', s=self.SCATTER_MARKER_SIZE, alpha=.6) #peak
                 ax1.scatter(stock_data[stock_data['zigzag'] ==-1].index, stock_data[stock_data['zigzag'] ==-1]['close'], color='salmon',s=self.SCATTER_MARKER_SIZE, alpha=.6)  #bottom
                 ax1.plot(stock_data[stock_data['zigzag'] !=0].index, stock_data[stock_data['zigzag'] !=0]['close'], 
-                        label='zigzag indicator',color='dimgrey', alpha=0.5, linewidth=1)
+                        label='zigzag indicator',color='dimgrey', alpha=0.6, linewidth=1)
                 
                 for i in range(0, len(stock_data['close'])):
                     if stock_data['zigzag'][i] ==-1:
@@ -1300,7 +1302,7 @@ class StockAnalyser():
 
         - method: options: 'ma', 'ema', 'dma', 'butter', 'close'|
         - T: day range of taking ma/butterworth low pass filter |
-        - ma_short_list, ma_long_list, 
+        - ma_short_list, ma_long_list: list of int, e.g. [3, 20], [9]
         - plot_ma: list of string, e.g. ma9, ema12
         - window_size: window to locate extrema from approx. price |
         - bp_filters: set of BuypointFilter, filter to applied to find buy point
@@ -1309,9 +1311,19 @@ class StockAnalyser():
 
     
         """
+        plot_ma_num=[]
+        for item in plot_ma:
+            match =  re.match(r'([a-zA-Z]+)(\d+)', item)
+            if match:
+                
+                num = int(match.group(2))
+                plot_ma_num.append(num)
+        
+        max_ma_num = max(plot_ma_num) if len(plot_ma_num)>0 else 0
         
         max_ma_long = max(ma_long_list) if len(ma_long_list) >0 else 0
-        pre_period = math.ceil(max(T,max_ma_long, 78) *365/252) # adjust by proportion of trading day in a year calculate
+        pre_period = math.ceil(max(T,max_ma_long, 78, max_ma_num) *365/252) # adjust by proportion of trading day in a year calculate
+        # 78=26*3 is for ploting ema26 which is required for MACD
         logger.info(f"days require before user's specified start day: {pre_period}")
 
         # since we need start earlier to calculate ma
@@ -1499,6 +1511,7 @@ def default_analyser_runner(tickers: str, start: str, end: str,
                         trend_col_name=trend_col_name,
                         bp_filters=bp_filters,
                         ma_long_list=ma_long_list, ma_short_list=ma_short_list,
+                        plot_ma=plot_ma,
                         extra_text_box=extra_text_box,
                         graph_showOption=graph_showOption,
                         graph_dir=graph_dir,
@@ -1686,9 +1699,9 @@ if __name__ == "__main__":
         # filter:sma cross
         default_analyser_runner(stockticker, stockstart, stockend,
                 method='close', 
-                ma_short_list=[3, 50],
-                ma_long_list=[13, 150],
-                bp_filters={  BuyptFilter.SMA_short_above_long},
+                ma_short_list=[3, 12],
+                ma_long_list=[6, 20],
+                bp_filters={  BuyptFilter.SMA_short_above_long, BuyptFilter.In_uptrend,},
                 figsize=graph_figsize, annotfont=3,
                 graph_dir=graph_file_dir,
                 graph_showOption=graph_show_opt,

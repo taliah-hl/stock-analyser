@@ -491,7 +491,7 @@ def runner(tickers, start:str, end:str, capital:float,
            bp_filters: set=set(),
            ma_short_list: list=[], ma_long_list=[],
            plot_ma: list=[],
-           graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=4,
+           graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=8,
            csv_dir:str='../../', print_all_ac:bool=True)->float:
     """
     return 
@@ -738,20 +738,21 @@ if __name__ == "__main__":
         # filter:sma cross only
         runner(stockticker, stockstart, stockend, capital, 
                SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-               bp_filters={sa.BuyptFilter.SMA_short_above_long},
-                ma_short_list=[3, 50],
-                ma_long_list=[13, 150],
+               bp_filters={sa.BuyptFilter.In_uptrend, sa.BuyptFilter.Rising_peak, sa.BuyptFilter.Converging_drop},
+                ma_short_list=[3],
+                ma_long_list=[9],
+                
                 graph_showOption=graph_show_opt,
                 graph_dir=graph_file_dir,
                print_all_ac=True, csv_dir=csv_dir)
         
          ### ADD FILTER EXAMPLE
-        runner(stockticker, stockstart, stockend, capital, 
-               SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-               bp_filters={sa.BuyptFilter.Some_filter},     # pass filter here
-                graph_showOption=graph_show_opt,
-                graph_dir=graph_file_dir,
-               print_all_ac=True, csv_dir=csv_dir)
+        # runner(stockticker, stockstart, stockend, capital, 
+        #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
+        #        bp_filters={sa.BuyptFilter.Some_filter},     # pass filter here
+        #         graph_showOption=graph_show_opt,
+        #         graph_dir=graph_file_dir,
+        #        print_all_ac=True, csv_dir=csv_dir)
 
 
     end=time.time()
@@ -763,7 +764,7 @@ if __name__ == "__main__":
 
 ## save graph and save roll result csv
 # python backtest.py -s=2022-08-01 -e=2023-08-16 -t=pdd -c=10000 -o=no -v=../../back_test_result/
-# python backtest.py -s=2022-08-01 -e=2023-08-16 -t=pdd -c=10000 -o=save -v=../../back_test_result/ -g=../../back_test_result/PDD_0816 --figsize=(50,20)
+# python backtest.py -s=2022-08-01 -e=2023-08-16 -t=pdd -c=10000 -o=save -v=../../back_test_result/ -g=../../back_test_result/PDD_0816
     
 
 
