@@ -263,12 +263,11 @@ class BackTest():
             input: prev row
             return: cur row, bool: True=sold, False=not sold
         """
-        print("check sell triggered")
+
         
         if self.sell_strategy== SellStrategy.TRAILING_STOP :
             if cur_price < (latest_high * (1-self.trail_loss_percent)):
                 # sell
-                print("sell triggered")
                 cur_row = self.sell(prev_row, cur_row, trigger_price= math.floor(latest_high * (1-self.trail_loss_percent)*100)/100, trigger='trail stop')
                 return (cur_row, True)
         elif self.sell_strategy==SellStrategy.TRAIL_FIX_SL_AND_PROFTARGET or self.sell_strategy==SellStrategy.TRAILING_AND_FIXED_SL :
@@ -512,8 +511,7 @@ def runner(tickers, start:str, end:str, capital:float,
         back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_sl=fixed_st, profit_target=profit_target)
 
 
-        print("ts percent:", back_test.trail_loss_percent)
-        print("sell strategy:" , back_test.sell_strategy)
+
         ac.txn = back_test.roll(ac,
                                trend_col_name=trend_col_name,
                                 bp_filters=bp_filters,
@@ -792,7 +790,7 @@ if __name__ == "__main__":
         
 
         bp_filter = set()
-        sell_stra_set = set()
+        sell_stra = None
         buy_strategy = None
 
         bp_filters_list = [item.upper() for item in bp_filters_list]
@@ -805,7 +803,7 @@ if __name__ == "__main__":
         
         for data in SellStrategy:
             if data.name in sell_strategy_list:
-                sell_stra_set.add(data)
+                sell_stra=data
 
         if isinstance(buy_strategy_str, str):
             buy_strategy_str.upper()
@@ -816,12 +814,9 @@ if __name__ == "__main__":
         logger.debug("config received from config file json:")
         logger.debug(confjson)
 
-        print(sell_stra_set)
-
-
         runner(stockticker, stockstart, stockend, capital, 
                buy_strategy=buy_strategy,
-              sell_strategy=sell_stra_set, 
+              sell_strategy=sell_stra, 
               ts_percent=ts_percent,
                 bp_filters=bp_filter,
                 ma_short_list=ma_short_list,

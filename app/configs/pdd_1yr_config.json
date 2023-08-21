@@ -7,12 +7,12 @@
       "CONVERGING_DROP",
       "RISING_PEAK"
     ],
-    "stop loss percent": 0.03,
+    "stop loss percent": 0.05,
     "buy strategy": "FOLLOW_BUYPT_FILTER",
     "sell strategy": ["TRAILING_STOP"],
     "graph show option": "no",
-    "graph dir": "../result",
-    "csv dir": "../result",
+    "graph dir": "../../result",
+    "csv dir": "../../result",
     "print_all_ac": false
   }
   
