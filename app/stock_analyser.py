@@ -26,14 +26,14 @@ class DayType(enum.Enum):
 
 class BuyptFilter(enum.Enum):
     # buy point filters
-    In_uptrend = 1
-    Converging_drop = 2
-    Rising_peak = 3
-    SMA_short_above_long = 4
-    RSI_over =5
+    IN_UPTREND = 1
+    CONVERGING_DROP = 2
+    RISING_PEAK = 3
+    SMA_SHORT_ABOVE_LONG = 4
+    RSI_OVER =5
 
     ### ADD FILTER EXAMPLE
-    Some_filter = 99
+    SOME_FILTER = 99
 
 class StockAnalyser():
 
@@ -850,14 +850,14 @@ class StockAnalyser():
         
         ## add new filters here if required
 
-        conv_filter = True if BuyptFilter.Converging_drop in bpfilters else False
-        rp_filter = True if BuyptFilter.Rising_peak in bpfilters else False
-        uptr_filter = True if BuyptFilter.In_uptrend in bpfilters else False
-        sma_abv_filter = True if BuyptFilter.SMA_short_above_long in bpfilters else False
-        rsi_abv_filter = True if BuyptFilter.RSI_over in bpfilters else False
+        conv_filter = True if BuyptFilter.CONVERGING_DROP in bpfilters else False
+        rp_filter = True if BuyptFilter.RISING_PEAK in bpfilters else False
+        uptr_filter = True if BuyptFilter.IN_UPTREND in bpfilters else False
+        sma_abv_filter = True if BuyptFilter.SMA_SHORT_ABOVE_LONG in bpfilters else False
+        rsi_abv_filter = True if BuyptFilter.RSI_OVER in bpfilters else False
 
         ### ADD FILTER EXAMPLE
-        some_filter = True if BuyptFilter.Some_filter in bpfilters else False
+        some_filter = True if BuyptFilter.SOME_FILTER in bpfilters else False
 
 
         in_uptrend_flag: bool=None
@@ -1544,7 +1544,7 @@ def trial_runner():
     #df = stock.download('pdd', '2023-07-01', '2023-08-01')
     df = stock.default_analyser(tickers='tsm', start='2022-08-01', end='2023-08-16',
                             method='close',
-                            bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
+                            bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.SMA_SHORT_ABOVE_LONG},
                             ma_short_list=[3, 20], ma_long_list=[9, 50],
                             
                                graph_showOption='save' )
@@ -1645,7 +1645,7 @@ if __name__ == "__main__":
                 logger.info(f"getting info of {item}")
                 default_analyser_runner(item, stockstart, stockend,
                         method='close', 
-                        bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
+                        bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.SMA_SHORT_ABOVE_LONG},
                         figsize=graph_figsize, annotfont=4,
                         graph_dir=f'{graph_file_dir}_{item}.png',
                         graph_showOption=graph_show_opt,
@@ -1664,15 +1664,15 @@ if __name__ == "__main__":
         with open(stock_lst_file, 'r') as fio:
             lines = fio.readlines()
         
+        lines = [i.strip(" []\n") for i in lines]
         for item in lines:
-            item=item.strip()
             logger.info(f"getting info of {item}")
             
             default_analyser_runner(item, stockstart, stockend,
                 method='close', 
                 ma_short_list=[3, 20],
                 ma_long_list=[9, 50],
-                bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
+                bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.SMA_SHORT_ABOVE_LONG},
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=graph_file_dir,
                 extra_text_box='',
@@ -1690,7 +1690,7 @@ if __name__ == "__main__":
         #         method='close', 
         #         ma_short_list=[3, 50],
         #         ma_long_list=[13, 150],
-        #         bp_filters={BuyptFilter.Converging_drop, BuyptFilter.In_uptrend, BuyptFilter.Rising_peak, BuyptFilter.SMA_short_above_long},
+        #         bp_filters={BuyptFilter.Converging_drop, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.SMA_SHORT_ABOVE_LONG},
         #         figsize=graph_figsize, annotfont=3,
         #         graph_dir=graph_file_dir,
         #         graph_showOption=graph_show_opt,
@@ -1701,7 +1701,7 @@ if __name__ == "__main__":
                 method='close', 
                 ma_short_list=[3, 12],
                 ma_long_list=[6, 20],
-                bp_filters={  BuyptFilter.SMA_short_above_long, BuyptFilter.In_uptrend,},
+                bp_filters={  BuyptFilter.SMA_SHORT_ABOVE_LONG, BuyptFilter.IN_UPTREND,},
                 figsize=graph_figsize, annotfont=3,
                 graph_dir=graph_file_dir,
                 graph_showOption=graph_show_opt,
