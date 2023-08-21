@@ -460,12 +460,22 @@ class BackTest():
         print revenue to csv file
 
         """
+        if save_path is None:
+            save_path='../../back_test_result/'
+        if not os.path.isdir(save_path):
+            os.makedirs(save_path)
+        add_num =1
+        save_path += f"/all_revenue"
+
+        save_path_norepeat = save_path
+        while os.path.isfile(f'{save_path_norepeat}.csv'):
+            save_path_norepeat = save_path + f'({add_num})'
+            add_num +=1
+
+        save_path_norepeat += '.csv'
         
         table=[]
-        if save_path is None:
-            save_path = '../../all_revenue_.csv'
-        else:
-            save_path = save_path + 'all_revenue_.csv'
+
 
         for ac in ac_list:
             table.append({'stock': ac.ticker, 
@@ -480,10 +490,10 @@ class BackTest():
         revenue_table['buy strategy']  = self.buy_strategy
         revenue_table['sell strategy']  = self.sell_strategy
 
-        revenue_table.to_csv(save_path)
-        with open(save_path, 'a') as fio:
+        revenue_table.to_csv(save_path_norepeat)
+        with open(save_path_norepeat, 'a') as fio:
             fio.write(textbox)
-        logger.info(f"overall revenue csv saved to {save_path}")
+        logger.info(f"overall revenue csv saved to {save_path_norepeat}")
 
 
 

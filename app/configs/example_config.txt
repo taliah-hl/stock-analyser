@@ -1,6 +1,8 @@
 ### Example  config
 ### this is example only, and is not valid json
 
+## hit: use shift+ alt + F to format to Json in VS code
+
 {
   "ticker": "pdd",
   "start": "2022-08-01",
