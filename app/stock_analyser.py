@@ -1179,11 +1179,11 @@ class StockAnalyser():
        ## shade green /red color as up/down trend by MACD signal
 
         if to_shade_updown and 'MACD' in stock_data and 'slope signal' in stock_data:
-            ax1.fill_between(stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=stock_data['slope signal']>0, facecolor='palegreen', alpha=.15)
+            ax1.fill_between(stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=stock_data['slope signal']>0, facecolor='palegreen', alpha=.12)
             ax1.fill_between(stock_data.index, UP_PLT_UPLIM, UP_PLT_DOWNLIM, where=stock_data['slope signal']<0, facecolor='pink', alpha=.12)
             ax2.plot(stock_data['MACD'], label='MACD', alpha=0.8, linewidth=1, color='indigo')
             ax2.plot(stock_data['signal'], label='signal', alpha=0.8, linewidth=1, color='darkorange')
-            ax2.fill_between(stock_data.index, LOW_PLT_UPLIM, LOW_PLT_DOWNLIM, where=stock_data['slope signal']>0, facecolor='palegreen', alpha=.15)
+            ax2.fill_between(stock_data.index, LOW_PLT_UPLIM, LOW_PLT_DOWNLIM, where=stock_data['slope signal']>0, facecolor='palegreen', alpha=.12)
             ax2.fill_between(stock_data.index, LOW_PLT_UPLIM, LOW_PLT_DOWNLIM, where=stock_data['slope signal']<0, facecolor='pink', alpha=.12)
             ax2.xaxis.grid(which='major', color='lavender', linewidth=3)
             ax2.xaxis.grid(which='minor', color='lavender', linewidth=3)

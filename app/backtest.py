@@ -788,6 +788,7 @@ if __name__ == "__main__":
         csv_dir = confjson.get("csv dir", '../../result')
         print_all_ac =confjson.get("print all ac", False)
         
+        print(type(stockticker))
 
         bp_filter = set()
         sell_stra = None
