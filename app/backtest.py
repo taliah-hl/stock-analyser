@@ -491,7 +491,7 @@ def runner(tickers, start:str, end:str, capital:float,
            bp_filters: set=set(),
            ma_short_list: list=[], ma_long_list=[],
            plot_ma: list=[],
-           graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=8,
+           graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=4,
            csv_dir:str='../../', print_all_ac:bool=True)->float:
     """
     return 
