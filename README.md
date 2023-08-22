@@ -3,38 +3,53 @@
 ## 2023 Version
 
 
-main class: `StockAnalyser` in app/stock_analyser.py
+main class: 
+`StockAnalyser` in app/stock_analyser.py
+`BackTest` in app/back_test.py
+`StockAccount` in app/back_test.py
 
 ## Goal
 
 1. to draw bowls on historical stock price in different time frame
 
-2. find break point
+2. find break point (buy point)
 
-## Setting
+3. set up sell strategy
 
-**Break point condition**
+4. conduct back test and calculate revenue
 
+## Buy point filters
 
+BuyptFilter in app/stock_analyser.py
 
-For all bottoms during uptrend:
-
-- filter 1: converging drop
-
-  - peak-to-bottom drop less than previous peak-to-bottom drop
-
-- filter 2: rising peak
-
-  - Price rise above previous peak on or before next peak
-
-- filter 3: uptrend detected
-  
-  - cur price rise above prev big bottom * 1+ zigzag up-threshold (only applicable if source of uptrend is zigzag)
+| filter | description |
+| ------ | ------ |
+| IN_UPTREND |  - set all points in up trend as buy points<br><br> - up trend is defined by specified column name in stock_data, with value >0 indicate uptrend, < 0 indicate downtrend,<br><br> - default is slope of MACD signal line if column of trend source not specified <br><br> - this filter has no effect if either CONVERGING_DROP or RISING_PEAK is used, since  CONVERGING_DROP and  RISING_PEAK intrinsically only looks for bottoms in uptrend  |
+|   CONVERGING_DROP     |   For all bottoms during uptrend:<br><br>if (peak-to-bottom drop) <  (previous peak-to-bottom drop)<br><br>the point (rise above previous peak) or (reach next peak), which ever earlier, is defined as break point   |
+| RISING_PEAK  | For all bottoms during uptrend:<br><br>if rise above previous peak before next peak, <br><br> the point rise above previous peak is defined as break point |
+|MA_SHORT_ABOVE_LONG |   all points for corresponding ma in "ma short" > "ma long" is set as buy points <br><br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> all points where ma3> ma9 and ma20>ma50 are set as buy points|
 
 
 **Extrema:**
 
 - find extrema from selected price source using `scipy.signal.argrelextrema`
+
+- default source: close price
+
+- use `method` in StockAnalyser.default_analyser to change source to find extrema: 
+
+- `method` options: 'close', 'ma', 'ema', 'dma', 'butter', 
+
+
+| source to find extrema | description |
+| ------ | ------ |
+|  'close'      |   directly use close price to find extrema (default setting)   |
+|  'ma'      |    use ma to find extrema   |
+|  'ema'      |    use ema to find extrema   |
+|  'dma'      |    use dma to find extrema   |
+|'butter' | apply Butterworth Low Pass Filter on close price, then use it to find extrema |
+
+- `T` in StockAnalyser.default_analyser
 
 Source of uptrend options:
 - zigzag indicator 
