@@ -36,7 +36,7 @@
   ],
     "stop loss percent": 0.05,
     "buy strategy": "FOLLOW_BUYPT_FILTER",
-    "sell strategy": ["TRAILING_STOP"],
+    "sell strategy": "TRAILING_STOP",
     "graph show option": "save",
     "graph dir": "../../result",
     "csv dir": "../../result",

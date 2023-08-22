@@ -1,10 +1,10 @@
 {
-  "ticker": ["pdd", "nvda"],
+  "ticker": "pdd",
   "start": "2022-08-01",
   "end": "2023-08-20",
-  "ma short": [3, 20],
-  "ma long": [9, 50],
-  "buy point filters": ["IN_UPTREND"
+  "buy point filters": [
+  "CONVERGING_DROP", 
+  "RISING_PEAK"
 ],
   "stop loss percent": 0.05,
   "buy strategy": "FOLLOW_BUYPT_FILTER",
@@ -12,5 +12,5 @@
   "graph show option": "save",
   "graph dir": "../../result",
   "csv dir": "../../result",
-  "print all ac": true
+  "print all ac": false
 }

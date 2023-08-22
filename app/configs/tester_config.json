@@ -12,7 +12,6 @@
       "MA_SHORT_ABOVE_LONG"
     ],
     "buy strategy": "FOLLOW_BUYPT_FILTER",
-    "sell strategy": ["TRAILING_STOP"],
     "stop loss percent": 0.05,
     "graph show option": "save",
     "graph dir": "../result",

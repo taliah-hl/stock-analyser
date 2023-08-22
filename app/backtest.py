@@ -505,7 +505,7 @@ class BackTest():
 
 
 def runner(tickers, start:str, end:str, capital:float, 
-           sell_strategy, ts_percent: float=None, fixed_st: float=None, profit_target:  float=None,
+           sell_strategy, ts_percent: float=None, fixed_sl: float=None, profit_target:  float=None,
            buy_strategy=BuyStrategy.FOLLOW_BUYPT_FILTER,
            trend_col_name: str='slope signal',
            bp_filters: set=set(),
@@ -524,7 +524,7 @@ def runner(tickers, start:str, end:str, capital:float,
         logger.info(f'---- **** Back Test of {tickers} stated **** ---')
         back_test = BackTest()
         back_test.set_buy_strategy(buy_strategy, bp_filters)
-        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_sl=fixed_st, profit_target=profit_target)
+        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_sl=fixed_sl, profit_target=profit_target)
 
 
 
@@ -542,7 +542,7 @@ def runner(tickers, start:str, end:str, capital:float,
         rev=ac.cal_revenue()
        
         ac.print_txn()
-        str_to_print = f'{tickers}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}\n'
+        str_to_print = f'{tickers}: trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}\n'
         for item in back_test.bp_filters:
             str_to_print+= str(item)+', '
 
@@ -557,7 +557,7 @@ def runner(tickers, start:str, end:str, capital:float,
 
         back_test = BackTest()
         back_test.set_buy_strategy(BuyStrategy.FOLLOW_BUYPT_FILTER, bp_filters)
-        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_sl=fixed_st, profit_target=profit_target)
+        back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_sl=fixed_sl, profit_target=profit_target)
 
         acc_list=[]
         total_finl_cap=0
@@ -582,7 +582,7 @@ def runner(tickers, start:str, end:str, capital:float,
             rev=ac.cal_revenue()
             if print_all_ac and ac.txn is not None:
                 ac.print_txn()
-                str_to_print = f'{item}: trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}'
+                str_to_print = f'{item}: trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}'
                 for b in back_test.bp_filters:
                     str_to_print+= str(b)+', '
                 ac.txn_to_csv(save_path=csv_dir, textbox=str_to_print)
@@ -598,7 +598,7 @@ def runner(tickers, start:str, end:str, capital:float,
 
         final_rev = ( total_finl_cap - capital * len(tickers))/(capital * len(tickers))
         logger.info(f"total revenue of run: {final_rev}")
-        back_test.print_revenue(acc_list, final_rev, save_path=csv_dir, textbox=f'trail stop={ts_percent}, fixed stop loss={fixed_st}, profit target={profit_target}')
+        back_test.print_revenue(acc_list, final_rev, save_path=csv_dir, textbox=f'trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}')
         return final_rev
 
 def yearly_test():
@@ -791,9 +791,11 @@ if __name__ == "__main__":
         stockend= confjson['end']
         capital = confjson.get("capital", 10000)
         ts_percent = confjson.get("stop loss percent", 0.05)
+        fsl_percent = confjson.get("fixed stop loss percent", None)
+        profit_target = confjson.get("profit target", None)
         bp_filters_list = confjson.get("buy point filters", [])
-        sell_strategy_list = confjson.get("sell strategy", [])
-        buy_strategy_str = confjson.get("buy strategy", None)
+        sell_strategy_str = confjson.get("sell strategy", None)
+        buy_strategy_str = confjson.get("buy strategy", "FOLLOW_BUYPT_FILTER")
         
         ma_short_list = confjson.get("ma short", [])
         ma_long_list = confjson.get("ma long", [])
@@ -810,7 +812,8 @@ if __name__ == "__main__":
         buy_strategy = None
 
         bp_filters_list = [item.upper() for item in bp_filters_list]
-        sell_strategy_list = [item.upper() for item in sell_strategy_list]
+        if isinstance(sell_strategy_str, str):
+            sell_strategy_str = sell_strategy_str.upper()
 
 
         for data in sa.BuyptFilter:
@@ -818,7 +821,7 @@ if __name__ == "__main__":
                 bp_filter.add(data)
         
         for data in SellStrategy:
-            if data.name in sell_strategy_list:
+            if data.name == sell_strategy_str:
                 sell_stra=data
 
         if isinstance(buy_strategy_str, str):
@@ -834,6 +837,8 @@ if __name__ == "__main__":
                buy_strategy=buy_strategy,
               sell_strategy=sell_stra, 
               ts_percent=ts_percent,
+              fixed_sl=fsl_percent,
+              profit_target=profit_target,
                 bp_filters=bp_filter,
                 ma_short_list=ma_short_list,
                 ma_long_list=ma_long_list,
