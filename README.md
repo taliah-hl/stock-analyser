@@ -101,33 +101,36 @@ python backtest.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-16 -c=10000
     "MA_SHORT_ABOVE_LONG"
   ],
   "buy strategy": "FOLLOW_BUYPT_FILTER",
-  "sell strategy": ["TRAILING_STOP"],
+  "sell strategy": "TRAIL_FIX_SL_AND_PROFTARGET",
   "stop loss percent": 0.05,
+  "fixed stop loss percent": 0.03,
+  "profit target": 0.3,
   "graph show option": "save",
   "graph dir": "../result",
   "csv dir": "../result",
   "print all ac": false
 }
+
 ```
 
-| param | description |  data type|
-| ------ | ------ |------ |
-|ticker|     stock ticker   |  str  |
-|  start      |    test start date    |  str (yyyy-mm-dd)  |
-|  end      |    test end date    |  str (yyyy-mm-dd)  |
-|    ma short    |    short ma to use in MA_SHORT_ABOVE_LONG filter    |   list of int |
-|   ma long     |   long ma to use in MA_SHORT_ABOVE_LONG filter      |    list of int <br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> ==>all points where ma3> ma9 and ma20>ma50 will be set as buy points |
-|   plot ma     |     extra ma to plot on graph, but will not affect buy point     |  list of str<br>e.g.['ma3', 'ema9']  |
-|   buy point filters     |    filters to find buy point, buy point are set if all filter met    | list of str<br> options:<br> "IN_UPTREND"<br> "CONVERGING_DROP"<br> "RISING_PEAK"<br>"MA_SHORT_ABOVE_LONG"  |
-|buy strategy | buy strategy, currently only support follow buy point filter |str<br> currently only option is: "FOLLOW_BUYPT_FILTER" |
-| sell strategy| sell strategy |str<br> e.g. "TRAILING_STOP"<br>options:<br>see above section Sell Strategy |
-| stop loss percent| percentage of trail stop loss| float |
-| fixed stop loss percent|percentage of fixed trail stop loss| float |
-| profit target|  prfot target percentage <br>e.g. profit target=0.3 means sell when price reach 130% of buy price|float |
-|graph show option | options of how to handle graph plotting| str <br>options:<br>"save"<br>"show"<br>"no" |
-|graph dir |directory to save graph |str |
-| csv dir|directory to save csv |str |
-|print all ac | if run list of stock, to print stock data and roll result of each stock or not  | bool|
+| param | description |  data type| required|
+| ------ | ------ |------ |------ |
+|ticker|     stock ticker   |  str  |yes|
+|  start      |    test start date    |  str (yyyy-mm-dd)  |yes|
+|  end      |    test end date    |  str (yyyy-mm-dd)  |yes|
+|    ma short    |    short ma to use in MA_SHORT_ABOVE_LONG filter    |   list of int |no|
+|   ma long     |   long ma to use in MA_SHORT_ABOVE_LONG filter      |    list of int <br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> ==>all points where ma3> ma9 and ma20>ma50 will be set as buy points |no|
+|   plot ma     |     extra ma to plot on graph, but will not affect buy point     |  list of str<br>e.g.['ma3', 'ema9']  |no|
+|   buy point filters     |    filters to find buy point, buy point are set if all filter met    | list of str<br> options:<br> "IN_UPTREND"<br> "CONVERGING_DROP"<br> "RISING_PEAK"<br>"MA_SHORT_ABOVE_LONG"  |no <br> - if no filter set, no buy points will be found|
+|buy strategy | buy strategy, currently only support follow buy point filter |str<br> - currently only option is: "FOLLOW_BUYPT_FILTER" |
+| sell strategy| sell strategy |str<br> e.g. "TRAILING_STOP"<br>options:<br>see above section Sell Strategy |no <br> - if no sell strategy, will hold until end|
+| stop loss percent| percentage of trail stop loss| float |no <br> if not set but sell strategy involved trail stop, set to default as 0.05|
+| fixed stop loss percent|percentage of fixed trail stop loss| float |**yes** if sell strategy involve fixed stop loss, else **no**|
+| profit target|  prfot target percentage <br>e.g. profit target=0.3 means sell when price reach 130% of buy price|float |**yes** if sell strategy involve profit target, else **no**|
+|graph show option | options of how to handle graph plotting| str <br>options:<br>"save"<br>"show"<br>"no" |no<br> - if not set, default='no'|
+|graph dir |directory to save graph |str |no<br> - if not set, default='../../result'|
+| csv dir|directory to save csv |str |no<br> - if not set, default='../../result'|
+|print all ac | if run list of stock, to print stock data and roll result of each stock or not  | bool|no<br> if not set, default=false
 
 **More config example:**
 - see folder app/configs
