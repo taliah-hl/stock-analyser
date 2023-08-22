@@ -15,7 +15,7 @@
   "graph_showOption": "save",
   "graph dir": "../result",
   "csv dir" : "../result",
-  "print_all_ac": false # if ticker is a list, whether to print roll result of each ticker
+  "print all ac": false # if ticker is a list, whether to print roll result of each ticker
 }
 
 ## can copy and paste the following json
@@ -31,5 +31,5 @@
   "graph_showOption": "save",
   "graph dir": "../result",
   "csv dir": "../result",
-  "print_all_ac": false
+  "print all ac": false
 }

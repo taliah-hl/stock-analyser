@@ -189,7 +189,7 @@ class BackTest():
                     graph_dir: str=None, 
                     figsize: tuple=(36,24), 
                     annotfont: float=4,
-                    csv_dir: str=None
+                    csv_dir: str=None, to_print_stock_data: bool=True 
                   )->sa.StockAnalyser:
         """
             init stock using StockAnalyser.default_analyser
@@ -212,7 +212,7 @@ class BackTest():
                 graph_showOption=graph_showOption,
                 graph_dir=graph_dir, 
                 figsize=figsize, annotfont=annotfont,
-                csv_dir=csv_dir
+                csv_dir=csv_dir, print_stock_data=to_print_stock_data 
             )
             return stock
         else:
@@ -306,9 +306,11 @@ class BackTest():
            plot_ma: list=[],
            extra_text_box:str='',
            graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
-           csv_dir: str=None )->pd.DataFrame:
+           csv_dir: str=None, to_print_stock_data: bool=True )->pd.DataFrame:
 
         try:
+            if not bp_filters:
+                bp_filters = self.bp_filters
             stock = self.set_stock(ticker=acc.ticker, start=acc.start, end=acc.end,
                                    trend_col_name=trend_col_name,
                                    bp_filters=bp_filters,
@@ -317,7 +319,7 @@ class BackTest():
                                    extra_text_box=extra_text_box,
                                    graph_showOption=graph_showOption, graph_dir=graph_dir,
                                    figsize=figsize, annotfont=annotfont, 
-                                   csv_dir=csv_dir
+                                   csv_dir=csv_dir, to_print_stock_data=to_print_stock_data
                                    )
         except Exception as err:
             logger.error(err)
@@ -401,12 +403,13 @@ class BackTest():
                         idx = stock.buypt_dates[next_buypt] # jump to next buy point
                         # print("next idx: ", idx)
                         continue
+                    #print(f"sold, is holding={is_holding}, today: {txn_table.index[idx]}")
             
              ## 2. Check buy
-            if ((self._stock_table['day of interest'][idx]==sa.DayType.BUYPT) and (not is_holding)):
+            if ((self._stock_table['day of interest'][idx]==sa.DayType.BUYPT) and (not is_holding) and idx != len(txn_table)-1):
                 #logger.debug("check buy triggered")
                 # buy with that day close price
-
+                #print(f"in checkbuy\n, is holding={is_holding}, today: {txn_table.index[idx]}, cash={txn_table['cash'][idx-1]}")
                 try:
                     share_num=math.floor(txn_table['cash'][idx-1] / txn_table['close price'][idx])
                     if share_num >=1:
@@ -441,7 +444,10 @@ class BackTest():
                 #  force sell
                 txn_table.iloc[idx]  =self.sell(prev_row=txn_table.iloc[idx-1].to_dict(),
                                                cur_row=txn_table.iloc[idx].to_dict(),
-                                               trigger_price=txn_table['close price'][idx])
+                                               trigger_price=txn_table['close price'][idx],
+                                               trigger='last day')
+                txn_table.iloc[idx, change_col] = (txn_table['deal price'][idx] - txn_table['deal price'][last_buy_date] ) / txn_table['deal price'][last_buy_date] 
+                
                 break
             #logger.debug(f"today action: {txn_table.iloc[idx, action_col]}")
             idx+=1
@@ -524,7 +530,6 @@ def runner(tickers, start:str, end:str, capital:float,
 
         ac.txn = back_test.roll(ac,
                                trend_col_name=trend_col_name,
-                                bp_filters=bp_filters,
                                 ma_short_list=ma_short_list, ma_long_list=ma_long_list,
                                 plot_ma=plot_ma,
                                 graph_showOption=graph_showOption,
@@ -543,7 +548,7 @@ def runner(tickers, start:str, end:str, capital:float,
 
         ac.txn_to_csv(save_path=csv_dir, textbox=str_to_print)
         
-        logger.debug(f"revenue of {tickers}: {rev}")
+        logger.info(f"revenue of {tickers}: {rev}")
         logger.info(f" Back Test of {tickers} done")
         return rev
     
@@ -563,12 +568,12 @@ def runner(tickers, start:str, end:str, capital:float,
             try:
                 ac.txn = back_test.roll(ac,
                                trend_col_name=trend_col_name,
-                                bp_filters=bp_filters,
                                 ma_short_list=ma_short_list, ma_long_list=ma_long_list,
                                 plot_ma=plot_ma,
                                 graph_showOption=graph_showOption,
                                 graph_dir=graph_dir, figsize=figsize, annotfont=annotfont,
-                                csv_dir=csv_dir
+                                csv_dir=csv_dir,
+                                to_print_stock_data = print_all_ac
 
                                   )
             except Exception as err:
@@ -664,7 +669,7 @@ if __name__ == "__main__":
 
     )
     logger.add(
-        f"../../BackTest_{date.today()}_log.log",
+        f"../log/BackTest_{date.today()}_log.log",
         level='DEBUG'
 
     )
@@ -741,7 +746,7 @@ if __name__ == "__main__":
                 
             runner(lines, stockstart, stockend, capital, 
                 SellStrategy.TRAILING_STOP , ts_percent=0.05,  
-                bp_filters={sa.BuyptFilter.CONVERGING_DROP, sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.SMA_SHORT_ABOVE_LONG},
+                bp_filters={sa.BuyptFilter.CONVERGING_DROP, sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.MA_SHORT_ABOVE_LONG},
                     ma_short_list=[50,3],
                     ma_long_list=[200,15],
                     graph_showOption=graph_show_opt,
@@ -749,10 +754,10 @@ if __name__ == "__main__":
 
         ## run one stock from cmd
         else:
-            # filter: peak bottom and sma above
+            # filter: peak bottom and ma above
             # runner(stockticker, stockstart, stockend, capital, 
             #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-            #        bp_filters={sa.BuyptFilter.CONVERGING_DROP, sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.SMA_SHORT_ABOVE_LONG},
+            #        bp_filters={sa.BuyptFilter.CONVERGING_DROP, sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.MA_SHORT_ABOVE_LONG},
             #         ma_short_list=[3, 50],
             #         ma_long_list=[13, 150],
             #         graph_showOption=graph_show_opt,
@@ -762,7 +767,7 @@ if __name__ == "__main__":
             # filter:sma cross only
             runner(stockticker, stockstart, stockend, capital, 
                 SellStrategy.TRAILING_AND_FIXED_SL , ts_percent=0.05,
-                bp_filters={sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.CONVERGING_DROP},
+                bp_filters={sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.CONVERGING_DROP},
                     ma_short_list=[3],
                     ma_long_list=[9],
                     

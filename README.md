@@ -169,10 +169,8 @@ result of plotting extrema from different price source:
 
 detail discussion of pros and cons of different techniques see `technique_and_theory.md`
 
-## Test
-pytest cliet: app/stock_analyser.py
 
-## Notes:
+## Bug to be solved:
 - ema (hence MACD) in early segment of stock data is not accurate, since ema is calculate base on yesturday's ema, so much earlier data before the specified start is required to get an accurate ema
 
 ## 2021 Version

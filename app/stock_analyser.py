@@ -29,7 +29,7 @@ class BuyptFilter(enum.Enum):
     IN_UPTREND = 1
     CONVERGING_DROP = 2
     RISING_PEAK = 3
-    SMA_SHORT_ABOVE_LONG = 4
+    MA_SHORT_ABOVE_LONG = 4
     RSI_OVER =5
 
     ### ADD FILTER EXAMPLE
@@ -652,6 +652,7 @@ class StockAnalyser():
         i=0
         while i+1 < self.data_len-1:
             next_peak_offset=0
+            # if in uptrend and is small bottom
             if self.__is_uptrend(i, trend_col_name, zzupthres) and self.stock_data['type'][i] ==-1 :
                 l =0
                 while self.stock_data['type'][i+l] !=1:
@@ -853,7 +854,7 @@ class StockAnalyser():
         conv_filter = True if BuyptFilter.CONVERGING_DROP in bpfilters else False
         rp_filter = True if BuyptFilter.RISING_PEAK in bpfilters else False
         uptr_filter = True if BuyptFilter.IN_UPTREND in bpfilters else False
-        sma_abv_filter = True if BuyptFilter.SMA_SHORT_ABOVE_LONG in bpfilters else False
+        sma_abv_filter = True if BuyptFilter.MA_SHORT_ABOVE_LONG in bpfilters else False
         rsi_abv_filter = True if BuyptFilter.RSI_OVER in bpfilters else False
 
         ### ADD FILTER EXAMPLE
@@ -1163,12 +1164,16 @@ class StockAnalyser():
                         stock_data[stock_data['buy pt']>0]['close']-annot_y_offset/2, 
                         color='gold', s=self.SCATTER_MARKER_SIZE*2, marker=6, zorder=1)
             logger.info("break point dates: ")
-            
+            str_to_print = ''
+            if len(filtered) >20:
+                sep=', \t'
+            else:
+                sep='\n'            
             for ind, val in filtered.items():   # item is float
-
-                logger.info(ind.strftime("%Y-%m-%d"))
+                str_to_print+=(ind.strftime("%Y-%m-%d")+sep)
+                #logger.info(ind.strftime("%Y-%m-%d"))
                 ax1.annotate("BP: "+ind.strftime("%Y-%m-%d")+", $"+"{:.2f}".format(val), (ind, val-annot_y_offset), fontsize=annotfont, ha='left', va='top', color='darkgoldenrod')
-
+            logger.info(str_to_print)
 
         ### --- cutom plot here  --- ###
 
@@ -1290,6 +1295,7 @@ class StockAnalyser():
            plot_ma: list=[],
            extra_text_box:str='',
            graph_showOption: str='show', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
+           print_stock_data: bool=True,
            csv_dir: str=None) ->pd.DataFrame:
 
         """
@@ -1345,6 +1351,11 @@ class StockAnalyser():
 
         if T<1 and method != 'close':
             raise Exception("T must >=1")
+        
+        if BuyptFilter.MA_SHORT_ABOVE_LONG in bp_filters:
+            if len(ma_short_list)==0 or len(ma_long_list)==0:
+                raise Exception("buy point filter contain MA_SHORT_ABOVE_LONG, but ma_short and/or ma_long is not provided")
+                
 
         if method=='close':
             self.set_extrema(src_data=self.stock_data['close'], close_price=self.stock_data['close'], interval=0)
@@ -1476,10 +1487,17 @@ class StockAnalyser():
 
         else:
             filtered= self.stock_data[self.stock_data['buy pt']>0]['close']
+            str_to_print = ''
+            if len(filtered) >20:
+                sep=', \t'
+            else:
+                sep='\n'            
             for ind, val in filtered.items():   # item is float
-                logger.info(ind.strftime("%Y-%m-%d"))
+                str_to_print+=(ind.strftime("%Y-%m-%d")+sep)
+                #logger.info(ind.strftime("%Y-%m-%d"))
+            logger.info(str_to_print)
 
-        if csv_dir is not None:
+        if csv_dir is not None and print_stock_data:
             self.stock_data_to_csv(csv_dir)
                 
         return self.stock_data
@@ -1544,7 +1562,7 @@ def trial_runner():
     #df = stock.download('pdd', '2023-07-01', '2023-08-01')
     df = stock.default_analyser(tickers='tsm', start='2022-08-01', end='2023-08-16',
                             method='close',
-                            bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.SMA_SHORT_ABOVE_LONG},
+                            bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.MA_SHORT_ABOVE_LONG},
                             ma_short_list=[3, 20], ma_long_list=[9, 50],
                             
                                graph_showOption='save' )
@@ -1578,7 +1596,7 @@ if __name__ == "__main__":
 
     )
     logger.add(
-        f"../../stockAnalyser_{date.today()}_log.log",
+        f"../log/stockAnalyser_{date.today()}_log.log",
         level='DEBUG'
 
     )
@@ -1645,7 +1663,7 @@ if __name__ == "__main__":
                 logger.info(f"getting info of {item}")
                 default_analyser_runner(item, stockstart, stockend,
                         method='close', 
-                        bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.SMA_SHORT_ABOVE_LONG},
+                        bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.MA_SHORT_ABOVE_LONG},
                         figsize=graph_figsize, annotfont=4,
                         graph_dir=f'{graph_file_dir}_{item}.png',
                         graph_showOption=graph_show_opt,
@@ -1672,7 +1690,7 @@ if __name__ == "__main__":
                 method='close', 
                 ma_short_list=[3, 20],
                 ma_long_list=[9, 50],
-                bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.SMA_SHORT_ABOVE_LONG},
+                bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.MA_SHORT_ABOVE_LONG},
                 figsize=graph_figsize, annotfont=4,
                 graph_dir=graph_file_dir,
                 extra_text_box='',
@@ -1690,7 +1708,7 @@ if __name__ == "__main__":
         #         method='close', 
         #         ma_short_list=[3, 50],
         #         ma_long_list=[13, 150],
-        #         bp_filters={BuyptFilter.Converging_drop, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.SMA_SHORT_ABOVE_LONG},
+        #         bp_filters={BuyptFilter.Converging_drop, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.MA_SHORT_ABOVE_LONG},
         #         figsize=graph_figsize, annotfont=3,
         #         graph_dir=graph_file_dir,
         #         graph_showOption=graph_show_opt,
@@ -1701,7 +1719,7 @@ if __name__ == "__main__":
                 method='close', 
                 ma_short_list=[3, 12],
                 ma_long_list=[6, 20],
-                bp_filters={  BuyptFilter.SMA_SHORT_ABOVE_LONG, BuyptFilter.IN_UPTREND,},
+                bp_filters={ BuyptFilter.CONVERGING_DROP,BuyptFilter.RISING_PEAK, },
                 figsize=graph_figsize, annotfont=3,
                 graph_dir=graph_file_dir,
                 graph_showOption=graph_show_opt,
@@ -1712,11 +1730,11 @@ if __name__ == "__main__":
 
     ## run in command line
 
-    ## PDD from 2020, save graph
-    # python stock_analyser.py -t=pdd -s=2020-01-01 -e=2023-08-16 -o=save -g=../../stock_analyser_graph/
+    ## PDD from 2020, save graph in folder ../../stock_analyser_graph, save stock data csv in ../../csv
+    # python stock_analyser.py -t=pdd -s=2020-01-01 -e=2023-08-16 -o=save -g=../../stock_analyser_graph -v=../../csv
 
     ## TSLA from 2020, don't plot graph
     # python stock_analyser.py -t=tsla -s=2020-01-01 -e=2023-08-16 -o=no
 
-    ## TSMC from 2021, don't plot graph, save stock data to csv
-    # python stock_analyser.py -t=tsm -s=2022-08-01 -e=2023-08-16 -o=save -v=../../stock_analyser_graph/
+    ## run stock in app/configs/2stocks.txt by command line
+    # python stock_analyser.py -f=./configs/2stocks.txt -s=2023-08-01 -e=2023-08-16 -o=no

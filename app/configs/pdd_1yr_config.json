@@ -14,5 +14,5 @@
   "graph show option": "save",
   "graph dir": "../../result",
   "csv dir": "../../result",
-  "print_all_ac": false
+  "print all ac": false
 }
