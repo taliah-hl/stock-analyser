@@ -83,6 +83,9 @@ python backtest.py -t=pdd -s=2022-08-01 -e=2023-08-16 -c=10000 -o=no -v=../back_
 python backtest.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-16 -c=10000 -o=save -v=../back_test_result -g=../graph_dir
 ```
 ### 4.2. run by config in command line (.json)
+```
+python backtest.py -j=./configs/backtest_config_example.json
+```
 
 **Example config (Json)**
 
