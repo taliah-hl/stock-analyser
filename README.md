@@ -4,11 +4,14 @@
 
 
 main class: 
+
 `StockAnalyser` in app/stock_analyser.py
+
 `BackTest` in app/back_test.py
+
 `StockAccount` in app/back_test.py
 
-## Goal
+## 1. Goal
 
 1. to draw bowls on historical stock price in different time frame
 
@@ -18,9 +21,9 @@ main class:
 
 4. conduct back test and calculate revenue
 
-## Buy point filters
+### 2. Buy point filters
 
-BuyptFilter in app/stock_analyser.py
+`BuyptFilter` in app/stock_analyser.py
 
 | filter | description |
 | ------ | ------ |
@@ -30,13 +33,118 @@ BuyptFilter in app/stock_analyser.py
 |MA_SHORT_ABOVE_LONG |   all points for corresponding ma in "ma short" > "ma long" is set as buy points <br><br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> all points where ma3> ma9 and ma20>ma50 are set as buy points|
 
 
-**Extrema:**
+### 3. Sell Strategy
+`SellStrategy` in app/back_test.py
+| Strategy | description |
+| ------ | ------ |
+|   TRAILING_STOP     |    Trailing Stop-loss (sell whenever drop n% from high point after buy)    |
+|    HOLD_TIL_END    |  Hold until last day       |
+| PROFIT_TARGET|  sell when profit target is reached|
+| FIXED_STOP_LOSS| sell when drop n% from buy price|
+|    TRAILING_AND_FIXED_SL | sell when at least one of trailing Stop-loss or fixed stop loss condition met|
+| TRAIL_FIX_SL_AND_PROFTARGET|sell when at least one of trailing Stop-loss, fixed stop loss or profit target met|
+|MIX | not defined yet (to be used in future) |
+
+
+
+
+## 4. How to use
+
+### 4.1. run in command line 
+
+To run `stock_analyser`
+go to app/stock_analyser.py 
+
+### command line run options
+
+- analyse one stock
+
+```
+python stock_analyser.py -t=PDD -s=2022-08-01 -e=2023-08-01 -g=../graph_dir -v=./csv_dir
+```
+
+- analyse list of stock from txt file
+
+```
+python stock_analyser.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-01 -g=../graph_dir -v=./csv_dir
+```
+
+to run `back_test`
+
+- run pdd, 1 year, with captial=$10000, no need to plot graph
+
+```
+python backtest.py -t=pdd -s=2022-08-01 -e=2023-08-16 -c=10000 -o=no -v=../back_test_result -g=../graph_dir
+```
+
+- run  list of stock from txt file, 1 year, with captial=$10000, save graph
+
+```
+python backtest.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-16 -c=10000 -o=save -v=../back_test_result -g=../graph_dir
+```
+### 4.2. run by config in command line (.json)
+
+**Example config (Json)**
+
+```
+{
+  "ticker": "pdd",
+  "start": "2023-08-01",
+  "end": "2023-08-20",
+  "ma short": [3, 20],
+  "ma long": [9, 50],
+  "plot ma": ["ma3", "ema9", "ma15"],
+  "buy point filters": [
+    "IN_UPTREND",
+    "CONVERGING_DROP",
+    "RISING_PEAK",
+    "MA_SHORT_ABOVE_LONG"
+  ],
+  "buy strategy": "FOLLOW_BUYPT_FILTER",
+  "sell strategy": ["TRAILING_STOP"],
+  "stop loss percent": 0.05,
+  "graph show option": "save",
+  "graph dir": "../result",
+  "csv dir": "../result",
+  "print all ac": false
+}
+```
+
+| param | description |  data type|
+| ------ | ------ |------ |
+|ticker|     stock ticker   |  str  |
+|  start      |    test start date    |  str (yyyy-mm-dd)  |
+|  end      |    test end date    |  str (yyyy-mm-dd)  |
+|    ma short    |    short ma to use in MA_SHORT_ABOVE_LONG filter    |   list of int |
+|   ma long     |   long ma to use in MA_SHORT_ABOVE_LONG filter      |    list of int <br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> ==>all points where ma3> ma9 and ma20>ma50 will be set as buy points |
+|   plot ma     |     extra ma to plot on graph, but will not affect buy point     |  list of str<br>e.g.['ma3', 'ema9']  |
+|   buy point filters     |    filters to find buy point, buy point are set if all filter met    | list of str<br> options:<br> "IN_UPTREND"<br> "CONVERGING_DROP"<br> "RISING_PEAK"<br>"MA_SHORT_ABOVE_LONG"  |
+|buy strategy | buy strategy, currently only support follow buy point filter |str<br> currently only option is: "FOLLOW_BUYPT_FILTER" |
+| sell strategy| sell strategy |str<br> e.g. "TRAILING_STOP"<br>options:<br>see above section Sell Strategy |
+| stop loss percent| percentage of trail stop loss| float |
+| fixed stop loss percent|percentage of fixed trail stop loss| float |
+| profit target|  prfot target percentage <br>e.g. profit target=0.3 means sell when price reach 130% of buy price|float |
+|graph show option | options of how to handle graph plotting| str <br>options:<br>"save"<br>"show"<br>"no" |
+|graph dir |directory to save graph |str |
+| csv dir|directory to save csv |str |
+|print all ac | if run list of stock, to print stock data and roll result of each stock or not  | bool|
+
+**More config example:**
+- see folder app/configs
+
+### 4.3. Import class
+
+- see example: `app/stock_analyser_backtest_demo.ipynb`
+
+## 5. More Settings
+
+### 5.1. Source of Extrema:
 
 - find extrema from selected price source using `scipy.signal.argrelextrema`
 
 - default source: close price
 
-- use `method` in StockAnalyser.default_analyser to change source to find extrema: 
+- Source of Extrema controlled by: `method` in StockAnalyser.default_analyser 
 
 - `method` options: 'close', 'ma', 'ema', 'dma', 'butter', 
 
@@ -49,70 +157,29 @@ BuyptFilter in app/stock_analyser.py
 |  'dma'      |    use dma to find extrema   |
 |'butter' | apply Butterworth Low Pass Filter on close price, then use it to find extrema |
 
-- `T` in StockAnalyser.default_analyser
+`T` in StockAnalyser.default_analyser
+- the period for ma / ema / dma / butter in `method`
+- has no effect if `method` set as 'close'
 
-Source of uptrend options:
-- zigzag indicator 
-  OR 
-- MACD Signal
+### 5.2. Source of uptrend
 
-Price source options of finding extrema:
-
-- close price
-- moving average (ma, ema, dma, lwma)
-- close price filered by Butterworth low-pass filter
+- controlled by: `trend_col_name` in StockAnalyser.default_analyser 
+- options: any column, with value >0 indicate uptrend, < 0 indicate downtrend
+- default: 'slope signal' which indicate slope of MACD Signal Line [see here](https://school.stockcharts.com/doku.php?id=technical_indicators:moving_average_convergence_divergence_macd)
 
 
-## How to use
-
-go to app/stock_analyser.py 
-
-### command line run options
-
-- analyse one stock
-
-```
-python stock_analyser.py --ticker=PDD --start=2022-08-01 --end=2023-08-01 --graph_dir=../dir/graph_name
-```
-
-- analyse list of stock from txt file
-
-```
-python stock_analyser.py --stocklist_file=../dir/stock.txt --start=2022-08-01 --end=2023-08-01 --graph_dir=../dir/graph_name
-```
-
-- analyse list of stock by default stock list in code
-
-```
-python stock_analyser.py --start=2022-08-01 --end=2023-08-01 --graph_dir=../dir/
-
-```
-
-### Use the class
-
-**main runner method**
-```
-def default_analyser_runner(tickers: str, start: str, end: str, 
-           method: str='', T: int=0, 
-            window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
-            macd_signal_T: int=9,
-            bp_trend_src: str='signal',
-           bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
-           extra_text_box:str='',
-           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6):
-   
-
-  def default_analyser(self, tickers: str, start: str, end: str,
-            method: str='', T: int=0, 
-            window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
-            bp_trend_src: str='signal',
-           bp_filter_conv_drop: bool=True, bp_filter_rising_peak: bool=True, bp_filter_uptrend: bool=True,
-           extra_text_box:str='',
-           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(36,24), annotfont: float=6) ->pd.DataFrame:
 
 
-```
-return: pd.Dataframe of stock information with peak, bottom, breakpoint etc
+### 5.3. Parameter of StockAnalyser.default_analyser
+
+main runner of class `StockAnalyser`: `StockAnalyser.default_analyser`
+
+TO BE WRITTEN
+| param | description |
+| ------ | ------ |
+|        |        |
+|        |        |
+
 
 Parameter of `runner_analyser`
 - `tickers`: stock symbol
@@ -133,42 +200,8 @@ Parameter of `runner_analyser`
   - recommend: 4-6
 
 
-### Example: using `runner_analyser`
 
-**E.g. 1**: PDD, 12 months plot extrema from close price, find breakpoint with converging drop filter and rising peak filter applied, use MACD Signal line as uptrend signal
 
-```
-stock = StockAnalyser()   # init class
-result_df = stock.default_analyser(
-    tickers='PDD', 
-    start='2022-08-01', 
-    end='2023-08-01',
-    method='close', 
-    bp_trend_src='signal',
-    bp_filter_conv_drop=True, 
-    bp_filter_rising_peak=True,
-    graph_showOption='save'
-)
-
-```
-
-**E.g. 2**: AMD, 12 months plot extrema from ema9, window size set as 5, find breakpoint with converging drop filter=True, rising peak filter=False, use zigzag indicator as uptrend signal
-
-```
-stock = StockAnalyser()   # init class
-result_df = stock.default_analyser(
-    tickers='AMD', 
-    start='2022-08-01', 
-    end='2023-08-01',
-    method='ema', T=9, window_size=5,
-    bp_trend_src='zz',
-    bp_filter_conv_drop=True, 
-    bp_filter_rising_peak=False,
-    bp_filter_uptrend=True,
-    graph_showOption='save'
-)
-
-```
 
 ## Example Result
 
