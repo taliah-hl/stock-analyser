@@ -36,7 +36,7 @@ class SellStrategy(enum.Enum):
     PROFIT_TARGET=3
     FIXED_STOP_LOSS=4
     TRAILING_AND_FIXED_SL  =5
-    TRAIL_FIX_SL_AND_PROFTARGET=5
+    TRAIL_FIX_SL_AND_PROFTARGET=6
     MIX=10
 
 class StockAccount():
@@ -270,7 +270,7 @@ class BackTest():
                 # sell
                 cur_row = self.sell(prev_row, cur_row, trigger_price= math.floor(latest_high * (1-self.trail_loss_percent)*100)/100, trigger='trail stop')
                 return (cur_row, True)
-        elif self.sell_strategy==SellStrategy.TRAIL_FIX_SL_AND_PROFTARGET or self.sell_strategy==SellStrategy.TRAILING_AND_FIXED_SL :
+        elif (self.sell_strategy==SellStrategy.TRAIL_FIX_SL_AND_PROFTARGET) or (self.sell_strategy==SellStrategy.TRAILING_AND_FIXED_SL) :
             if (self.trail_loss_percent is not None 
                 and cur_price < (latest_high * (1-self.trail_loss_percent)) ):
                 cur_row = self.sell(prev_row, cur_row, trigger_price=math.floor(latest_high*(1-self.trail_loss_percent)*100)/100, trigger='trail stop')
@@ -372,7 +372,8 @@ class BackTest():
         
         #print(stock.buypt_dates)
         #print(stock.buypt_dates[-1])
-        
+
+
         while idx < len(self._stock_table):
 
            # logger.debug(f"today: {txn_table.index[idx]}, is holding {is_holding}")
@@ -819,10 +820,12 @@ if __name__ == "__main__":
         for data in sa.BuyptFilter:
             if data.name in bp_filters_list:
                 bp_filter.add(data)
-        
+
         for data in SellStrategy:
             if data.name == sell_strategy_str:
                 sell_stra=data
+                break
+        logger.debug(f"sell strategy got: {sell_stra}")
 
         if isinstance(buy_strategy_str, str):
             buy_strategy_str.upper()
