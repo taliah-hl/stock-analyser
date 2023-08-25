@@ -30,14 +30,14 @@ class BuyStrategy(enum.Enum):
     SOME_UNKNOWN_STRATEGY = 99
 
 class SellStrategy(enum.Enum):
-    DEFAULT=0
+    DEFAULT=0   #default is trailing stop, change in set_sell_strategy() method of BackTest
     TRAILING_STOP  =1
     HOLD_TIL_END=2
     PROFIT_TARGET=3
     FIXED_STOP_LOSS=4
     TRAILING_AND_FIXED_SL  =5
     TRAIL_FIX_SL_AND_PROFTARGET=6
-    MIX=10
+    MIX=10  # did not set yet
 
 class StockAccount():
     def __init__(self, ticker: str, start: str, end: str,initial_capital: int):
@@ -156,13 +156,15 @@ class BackTest():
     def set_buy_strategy(self, strategy=None, buypt_filters: set=set()):
         if strategy is not None:
             self.buy_strategy = strategy
+
         self.bp_filters = buypt_filters
 
 
     def set_sell_strategy(self, strategy, ts_percent: float=None, 
                           profit_target: float=None, fixed_sl: float=None):
         self.sell_strategy = strategy
-
+        if self.sell_strategy == SellStrategy.DEFAULT:
+            self.sell_strategy = SellStrategy.TRAILING_STOP
         if not pd.isna(ts_percent):
             self.trail_loss_percent = ts_percent
         if not pd.isna(profit_target):
@@ -278,12 +280,12 @@ class BackTest():
                 
             elif (self.fixed_st is not None 
                   and cur_price <( (self._stock_table['close'][last_buy_date]) * (1-self.fixed_st))):
-                cur_row = self.sell(prev_row, cur_row, trigger_price=math.floor(self._stock_table['close'][last_buy_date] * (1-self.fixed_st)*100)/100, trigger='fixed ST')
+                cur_row = self.sell(prev_row, cur_row, trigger_price=math.floor(self._stock_table['close'][last_buy_date] * (1-self.fixed_st)*100)/100, trigger='fixed SL')
                 return (cur_row, True)
 
             elif ( self.profit_target is not None
                   and cur_price >=  self._stock_table['close'][last_buy_date] * (1+self.profit_target)):
-                cur_row = self.sell(prev_row, cur_row, trigger_price=math.floor(self._stock_table['close'][last_buy_date] * (1+self.profit_target)*100)/100, trigger='profit target')
+                cur_row = self.sell(prev_row, cur_row, trigger_price=math.ceil(self._stock_table['close'][last_buy_date] * (1+self.profit_target)*100)/100, trigger='profit target')
                 return (cur_row, True)
 
             
