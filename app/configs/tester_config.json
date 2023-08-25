@@ -2,20 +2,14 @@
     "ticker": "vrtx",
     "start": "2023-01-01",
     "end": "2023-08-01",
-    "ma short": [3, 20],
-    "ma long": [9, 50],
-    "plot ma": ["ma3", "ema9", "ma15"],
+
     "buy point filters": [
-      "IN_UPTREND",
-      "CONVERGING_DROP",
-      "RISING_PEAK",
-      "MA_SHORT_ABOVE_LONG"
+
     ],
-    "buy strategy": "FOLLOW_BUYPT_FILTER",
-    "stop loss percent": 0.05,
+
     "graph show option": "save",
-    "graph dir": "../result",
-    "csv dir": "../result",
+    "graph dir": "../../result",
+    "csv dir": "../../result",
     "print all ac": false
   }
   

@@ -1,6 +1,43 @@
-# Stock
+<!-- vscode-markdown-toc -->
+* 1. [Goal](#Goal)
+* 2. [Buy point filters](#Buypointfilters)
+* 3. [Sell Strategy](#SellStrategy)
+* 4. [How to use](#Howtouse)
+	* 4.1. [run in command line](#runincommandline)
+	* 4.2. [run by config in command line (.json)](#runbyconfigincommandline.json)
+	* 4.3. [Table of parameters in JSON config file](#TableofparametersinJSONconfigfile)
+	* 4.4. [Import class](#Importclass)
+* 5. [Columns in `StockAnalyser.stock_data`](#ColumnsinStockAnalyser.stock_data)
+	* 5.1. [default file output dir and file name](#defaultfileoutputdirandfilename)
+* 6. [Columns in `StockAccount.txn`](#ColumnsinStockAccount.txn)
+	* 6.1. [default file output dir and file name](#defaultfileoutputdirandfilename-1)
+	* 6.2. [Buy Sell Logic](#BuySellLogic)
+* 7. [Advanced Settings](#AdvancedSettings)
+	* 7.1. [Source of Extrema:](#SourceofExtrema:)
+	* 7.2. [Source of uptrend](#Sourceofuptrend)
+	* 7.3. [Parameter of StockAnalyser.default_analyser](#ParameterofStockAnalyser.default_analyser)
+* 8. [Example Result](#ExampleResult)
+* 9. [Techniques Studied](#TechniquesStudied)
+	* 9.1. [Stock price smoothing technique](#Stockpricesmoothingtechnique)
+* 10. [Bug to be solved:](#Bugtobesolved:)
+* 11. [2021 Version](#Version)
+* 12. [Peaks and Bottoms](#PeaksandBottoms)
+	* 12.1. [Example](#Example)
+	* 12.2. [Limitations Using Blackman Window](#LimitationsUsingBlackmanWindow)
+	* 12.3. [Limitations Using Polynomial Regression](#LimitationsUsingPolynomialRegression)
+* 13. [Trend](#Trend)
+	* 13.1. [Example](#Example-1)
+	* 13.2. [Limitations](#Limitations)
+* 14. [Smoothing the Data ("Noise" Reduction)](#SmoothingtheDataNoiseReduction)
+* 15. [Linear Regression](#LinearRegression)
 
-## 2023 Version
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc --># Stock
+
+<a name='Version'></a>2023 Version
 
 
 main class: 
@@ -11,7 +48,7 @@ main class:
 
 `StockAccount` in app/back_test.py
 
-## 1. Goal
+##  1. <a name='Goal'></a>Goal
 
 1. to draw bowls on historical stock price in different time frame
 
@@ -21,7 +58,7 @@ main class:
 
 4. conduct back test and calculate revenue
 
-### 2. Buy point filters
+##  2. <a name='Buypointfilters'></a>Buy point filters
 
 `BuyptFilter` in app/stock_analyser.py
 
@@ -33,10 +70,11 @@ main class:
 |MA_SHORT_ABOVE_LONG |   all points for corresponding ma in "ma short" > "ma long" is set as buy points <br><br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> all points where ma3> ma9 and ma20>ma50 are set as buy points|
 
 
-### 3. Sell Strategy
+##  3. <a name='SellStrategy'></a>Sell Strategy
 `SellStrategy` in app/back_test.py
 | Strategy | description |
 | ------ | ------ |
+| DEFAULT| currently set as = TRAILING_STOP|
 |   TRAILING_STOP     |    Trailing Stop-loss (sell whenever drop n% from high point after buy)    |
 |    HOLD_TIL_END    |  Hold until last day       |
 | PROFIT_TARGET|  sell when profit target is reached|
@@ -48,14 +86,14 @@ main class:
 
 
 
-## 4. How to use
+##  4. <a name='Howtouse'></a>How to use
 
-### 4.1. run in command line 
+###  4.1. <a name='runincommandline'></a>run in command line 
 
 To run `stock_analyser`
 go to app/stock_analyser.py 
 
-### command line run options
+**command line run options**
 
 - analyse one stock
 
@@ -82,7 +120,7 @@ python backtest.py -t=pdd -s=2022-08-01 -e=2023-08-16 -c=10000 -o=no -v=../back_
 ```
 python backtest.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-16 -c=10000 -o=save -v=../back_test_result -g=../graph_dir
 ```
-### 4.2. run by config in command line (.json)
+###  4.2. <a name='runbyconfigincommandline.json'></a>run by config in command line (.json)
 ```
 python backtest.py -j=./configs/backtest_config_example.json
 ```
@@ -94,6 +132,7 @@ python backtest.py -j=./configs/backtest_config_example.json
   "ticker": "pdd",
   "start": "2023-08-01",
   "end": "2023-08-20",
+  "captial": "10000",
   "ma short": [3, 20],
   "ma long": [9, 50],
   "plot ma": ["ma3", "ema9", "ma15"],
@@ -115,36 +154,142 @@ python backtest.py -j=./configs/backtest_config_example.json
 }
 
 ```
+###  4.3. <a name='TableofparametersinJSONconfigfile'></a>Table of parameters in JSON config file
 
-| param | description |  data type| required|
-| ------ | ------ |------ |------ |
-|ticker|     stock ticker   |  str  |yes|
-|  start      |    test start date    |  str (yyyy-mm-dd)  |yes|
-|  end      |    test end date    |  str (yyyy-mm-dd)  |yes|
-|    ma short    |    short ma to use in MA_SHORT_ABOVE_LONG filter    |   list of int |no|
-|   ma long     |   long ma to use in MA_SHORT_ABOVE_LONG filter      |    list of int <br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> ==>all points where ma3> ma9 and ma20>ma50 will be set as buy points |no|
-|   plot ma     |     extra ma to plot on graph, but will not affect buy point     |  list of str<br>e.g.['ma3', 'ema9']  |no|
-|   buy point filters     |    filters to find buy point, buy point are set if all filter met    | list of str<br> options:<br> "IN_UPTREND"<br> "CONVERGING_DROP"<br> "RISING_PEAK"<br>"MA_SHORT_ABOVE_LONG"  |no <br> - if no filter set, no buy points will be found|
-|buy strategy | buy strategy, currently only support follow buy point filter |str<br> - currently only option is: "FOLLOW_BUYPT_FILTER" |
-| sell strategy| sell strategy |str<br> e.g. "TRAILING_STOP"<br>options:<br>see above section Sell Strategy |no <br> - if no sell strategy, will hold until end|
-| stop loss percent| percentage of trail stop loss| float |no <br> if not set but sell strategy involved trail stop, set to default as 0.05|
-| fixed stop loss percent|percentage of fixed trail stop loss| float |**yes** if sell strategy involve fixed stop loss, else **no**|
-| profit target|  prfot target percentage <br>e.g. profit target=0.3 means sell when price reach 130% of buy price|float |**yes** if sell strategy involve profit target, else **no**|
-|graph show option | options of how to handle graph plotting| str <br>options:<br>"save"<br>"show"<br>"no" |no<br> - if not set, default='no'|
-|graph dir |directory to save graph |str |no<br> - if not set, default='../../result'|
-| csv dir|directory to save csv |str |no<br> - if not set, default='../../result'|
-|print all ac | if run list of stock, to print stock data and roll result of each stock or not  | bool|no<br> if not set, default=false
+| param | description |  data type|example| required|
+| ------ | ------ |------ |------ |------ |
+|ticker|     stock ticker   |  str<br>*or*<br>list of str |'PDD'<br>['PDD', 'TSLA', 'VRTX'] |yes|
+|  start      |    test start date    |  str (yyyy-mm-dd) | '2023-01-01' |yes|
+|  end      |    test end date    |  str (yyyy-mm-dd) | '2023-08-01' |yes|
+|  capital      |    initial capital for backtest   |  int / float | 10000 |no<br>- if not set, set to default as 10000|
+|    ma short    |    short ma to use in MA_SHORT_ABOVE_LONG filter    |   list of int |[3]<br>[3,20]|no|
+|   ma long     |   long ma to use in MA_SHORT_ABOVE_LONG filter      |    list of int |[9]<br>[9,50]<br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> ==>all points where ma3> ma9 and ma20>ma50 will be set as buy points |no|
+|   plot ma     |     extra ma to plot on graph, but will not affect buy point     |  list of str<br>|['ma3', 'ema9']  |no|
+|   buy point filters     |    filters to find buy point, buy point are set if all filter met    | list of str|  "IN_UPTREND"<br> "CONVERGING_DROP"<br> "RISING_PEAK"<br>"MA_SHORT_ABOVE_LONG"  |no <br> - if no filter set, no buy points will be found|
+|buy strategy | buy strategy, currently only support follow buy point filter |str | "FOLLOW_BUYPT_FILTER"<br>(the only option currently)  |no|
+| sell strategy| sell strategy |str| "DEFAULT"(currently set as trailing stop)<br>"TRAILING_STOP"<br>"HOLD_TIL_END"<br>"PROFIT_TARGET"<br>"FIXED_STOP_LOSS"<br>"TRAILING_AND_FIXED_SL"<br>"TRAIL_FIX_SL_AND_PROFTARGET" |no <br> - if no sell strategy, will hold until end|
+| stop loss percent| percentage of trail stop loss| float |0.05|no <br> if not set but sell strategy involved trail stop, set to default as 0.05|
+| fixed stop loss percent|percentage of fixed trail stop loss| float |0.03|**yes** if sell strategy involve fixed stop loss, else **no**|
+| profit target|  prfot target percentage|float |0.3<br>(means sell when price reach 130% of buy price)|**yes** if sell strategy involve profit target, else **no**|
+|graph show option | options of how to handle graph plotting| str |"save"<br>"show"<br>"no" |no<br> - if not set, default='no'|
+|graph dir |directory to save graph |str |"../../result"|no<br> - if not set, default='../../result'|
+| csv dir|directory to save csv |str |"../../result"|no<br> - if not set, default='../../result'|
+|print all ac | if run list of stock, to print stock data and roll result of each stock or not  | bool|true|no<br> if not set, default=false
 
 **More config example:**
-- see folder app/configs
+- see folder [app/configs](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/app/configs?ref_type=heads)
 
-### 4.3. Import class
+###  4.4. <a name='Importclass'></a>Import class
 
-- see example: `app/stock_analyser_backtest_demo.ipynb`
+- see demo: [`app/stock_analyser_backtest_demo.ipynb`](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/app/stock_analyser_backtest_demo.ipynb?ref_type=heads)
+  
+##  5. <a name='ColumnsinStockAnalyser.stock_data'></a>Columns in `StockAnalyser.stock_data`
 
-## 5. More Settings
+###  5.1. <a name='defaultfileoutputdirandfilename'></a>default file output dir and file name
 
-### 5.1. Source of Extrema:
+- ../../result/`stock ticker`_ `start date`_ `end date`.csv
+- data type: pd.DataFrame
+- columns:
+
+ | column name  | description |must appear via run default_analyser?| produce by wich method|
+| ------ | ------ |------ |------ |
+|   Date        | date  (index column)    |  yes| `download`  |
+|   close     |  close price of stock in that day  | yes|  `download` |
+|  type |  peak / bottom<br>1=peak<br>0=bottom    |yes |  `set_extrema` |
+| p-b change  | percentage change of price between peak-bottom    | yes| `set_extrema`  |
+|  ma{T}<br>e.g. ma9 | simple moving average    | no<br>will appear if provide in "ma short", "ma long", "plot ma" in config|  `add_column_ma` |
+| zigzag  |  zigzag indicator<br>1=peak<br>0=bottom<br>come from [this module](https://pypi.org/project/zigzag/)   | yes| `set_zigizag_trend`  |
+|  zz trend |   up/down trend according to zigzag indicator <br>-1=downtrend <br>1=uptrend  |yes | `set_zigizag_trend`  |
+|  ema12<br>ema26 | exponential moving average 12 and 26    | yes|  `__add_col_macd_group` |
+| MACD  |  MACD  <br>[see here](https://school.stockcharts.com/doku.php?id=technical_indicators:moving_average_convergence_divergence_macd) to learn about MACD and MACD Signal | yes| `__add_col_macd_group`  |
+| signal  |  MACD Signal Line  |yes| `__add_col_macd_group`  |
+| slope MACD  |  slope of MACD   |yes | `__add_col_macd_group`  |
+|  slope signal |  slope of MACD Signal   | yes| `__add_col_macd_group`  |
+|  buy pt |  is buy point or not<br>   |yes | `__set_breakpoint`  |
+| day of interest  |  mark day of interest <br> currently only marked buy point as DayType.BUYPT  | - need to pass at least one "buy point filter" to get buy point<br>- otherwise this will be empty column|  `set_buy_point` |
+|ma{A} above ma{B}| is ma{A} above ma{B}|no <br>will appear if provide in "ma short", "ma long"|`add_col_ma_above`|
+
+
+
+##  6. <a name='ColumnsinStockAccount.txn'></a>Columns in `StockAccount.txn`
+
+###  6.1. <a name='defaultfileoutputdirandfilename-1'></a>default file output dir and file name
+
+- ../../result/roll_result_`stock ticker`_ `start date`_ `end date`.csv
+- if list of stock is run, will produce a csv file record revenue of each stock in ../../result/all_revenue.csv
+- data type: pd.DataFrame
+- columns:
+
+ | column name  | description |
+| ------ | ------ |
+|   Date        | date  (index column)  
+|cash|amount of cash  |
+|close price |close price of the considered stock on that day |
+|MV | market value of holding on that day <br>calculated by close price|
+|action | action taken on that day <br> (only the last action taken will show up, in current setting only one action will be taken each day, see [Buy Sell Logic] S ection for detail)  <br>example<br>Action.BUY<br>Action.SELL|
+|deal price |deal price of buy / sell stock |
+|txn amt |transaction amount<br> =number of share in transaction * deal price |
+|total asset | =cash + market value of holding|
+|latest high | highest close price reached after the latest buy action |
+|+- | only appear in row that have sell action <br>=percentage gain in that buy-sell pair|
+| trigger| trigger reason of sell<br>example<br>trail stop (reach trailing stop loss price)<br>fixed SL (reach fixed stop loss price)<br>profit target (reach profit target)<br> last day (forced sell on last day of back test) |
+###  6.2. <a name='BuySellLogic'></a>Buy Sell Logic
+
+conduct in `roll` methed of `BackTest`
+
+pseudo code of `roll`:
+
+```
+for each row in stock_data:
+  # check sell
+  if has holding:
+    check_sell()  # check need to sell or not
+    if no holding after check_sell():
+      iteration jump to next buy point
+      continue
+
+  # check buy
+  if that day is buy point and not `is_holding`:
+    check how many share can buy with available cash
+    if share able to buy >=1:
+      buy()
+
+  # force sell on last day    
+  if is last day:
+    force sell
+
+  # fast forward
+  if no holding and no more buy point onwards:
+    break
+
+
+```
+
+**buy**:
+
+- use as much available cash as possible to buy stock
+- deal at close price
+- only check buy when no holding (can be adjusted by removing  not `is_holding` clause in check buy)
+
+**sell**:
+
+- check whether need to sell on day with holding
+- sell 100% of stock each time (can be adjusted in param `portion` in `BackTest.sell`)  
+- deal at trigger price
+
+|trigger reason| trigger price|
+|-----|-----|
+| trailing stop loss| latest high price * (1- trail_loss_percent) -> round down to 2d.p.|
+| fixed stop loss| buy price * (1- fixed stop loss) -> round down to 2d.p.|
+|profit target | buy price * (1+ profit target) -> round up to 2d.p. |
+| last day | close price|
+
+
+
+
+##  7. <a name='AdvancedSettings'></a>Advanced Settings
+
+###  7.1. <a name='SourceofExtrema:'></a>Source of Extrema:
 
 - find extrema from selected price source using `scipy.signal.argrelextrema`
 
@@ -167,7 +312,7 @@ python backtest.py -j=./configs/backtest_config_example.json
 - the period for ma / ema / dma / butter in `method`
 - has no effect if `method` set as 'close'
 
-### 5.2. Source of uptrend
+###  7.2. <a name='Sourceofuptrend'></a>Source of uptrend
 
 - controlled by: `trend_col_name` in StockAnalyser.default_analyser 
 - options: any column, with value >0 indicate uptrend, < 0 indicate downtrend
@@ -176,7 +321,7 @@ python backtest.py -j=./configs/backtest_config_example.json
 
 
 
-### 5.3. Parameter of StockAnalyser.default_analyser
+###  7.3. <a name='ParameterofStockAnalyser.default_analyser'></a>Parameter of StockAnalyser.default_analyser
 
 main runner of class `StockAnalyser`: `StockAnalyser.default_analyser`
 
@@ -209,13 +354,14 @@ Parameter of `runner_analyser`
 
 
 
-## Example Result
+##  8. <a name='ExampleResult'></a>Example Result
 
 result of plotting extrema from different price source: 
 - `result_plot_extrema.pdf`
+- MORE EXAMPLE TO BE WRITTEN
 
-## Techniques Studied
-
+##  9. <a name='TechniquesStudied'></a>Techniques Studied
+###  9.1. <a name='Stockpricesmoothingtechnique'></a>Stock price smoothing technique
 - Moving Averages (MA, EMA, DMA)
 - Butterworth Low Pass Filter
 - polyfit
@@ -224,13 +370,36 @@ result of plotting extrema from different price source:
 detail discussion of pros and cons of different techniques see `technique_and_theory.md`
 
 
-## Bug to be solved:
+##  10. <a name='Bugtobesolved:'></a>Bug to be solved:
 - ema (hence MACD) in early segment of stock data is not accurate, since ema is calculate base on yesturday's ema, so much earlier data before the specified start is required to get an accurate ema
 
-## 2021 Version
+##  11. <a name='Version'></a>2021 Version
 ---
 
 - [Stock](#stock)
+  - [2023 Version](#2023-version)
+  - [Goal](#goal)
+    - [Buy point filters](#buy-point-filters)
+    - [Sell Strategy](#sell-strategy)
+  - [How to use](#how-to-use)
+    - [run in command line](#run-in-command-line)
+    - [run by config in command line (.json)](#run-by-config-in-command-line-json)
+    - [Table of parameters in JSON config file](#table-of-parameters-in-json-config-file)
+    - [Import class](#import-class)
+  - [Columns in `StockAnalyser.stock_data`](#columns-in-stockanalyserstock_data)
+    - [default file output dir and file name](#default-file-output-dir-and-file-name)
+  - [Columns in `StockAccount.txn`](#columns-in-stockaccounttxn)
+    - [default file output dir and file name](#default-file-output-dir-and-file-name-1)
+    - [Buy Sell Logic](#buy-sell-logic)
+  - [Advanced Settings](#advanced-settings)
+    - [Source of Extrema:](#source-of-extrema)
+    - [Source of uptrend](#source-of-uptrend)
+    - [Parameter of StockAnalyser.default\_analyser](#parameter-of-stockanalyserdefault_analyser)
+  - [Example Result](#example-result)
+  - [Techniques Studied](#techniques-studied)
+    - [Stock price smoothing technique](#stock-price-smoothing-technique)
+  - [Bug to be solved:](#bug-to-be-solved)
+  - [2021 Version](#2021-version)
 - [Logic and Design](#logic-and-design)
   - [Peaks and Bottoms](#peaks-and-bottoms)
     - [Example](#example)
@@ -247,7 +416,7 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 
 # Logic and Design
 
-## Peaks and Bottoms
+##  12. <a name='PeaksandBottoms'></a>Peaks and Bottoms
 
 ![](./docs/Screenshot%202021-08-16%20184841.png)
 
@@ -255,11 +424,11 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 - Find the approximate peaks and bottoms using the smoothed trend
 - Find the actual peaks and bottoms using the real data
 
-### Example
+###  12.1. <a name='Example'></a>Example
 
 ![](./docs/NVDA%20Peaks%20and%20Bottoms.png)
 
-### Limitations Using Blackman Window
+###  12.2. <a name='LimitationsUsingBlackmanWindow'></a>Limitations Using Blackman Window
 
 For a longer period of time, the value of `smooth_data_N` and `find_extrema_interval` has to change to other value.
 
@@ -275,7 +444,7 @@ Solution:
 
 ![](./docs/NVDA%20Peaks%20and%20Bottoms%203.png)
 
-### Limitations Using Polynomial Regression
+###  12.3. <a name='LimitationsUsingPolynomialRegression'></a>Limitations Using Polynomial Regression
 
 The degree cannot be too large when there are a lot of data.
 
@@ -283,11 +452,11 @@ It might not work when the given period (number of record) is too large.
 
 ---
 
-## Trend
+##  13. <a name='Trend'></a>Trend
 
 - Use linear regression and plot a best-fit line.
 
-### Example
+###  13.1. <a name='Example-1'></a>Example
 
 `stock_info = yf.download("^HSI", start="2000-01-01", end="2003-06-15")`
 
@@ -297,7 +466,7 @@ It might not work when the given period (number of record) is too large.
 
 ![NVDA Linear Regression](./docs/NVDA%20Linear%20Regression.png)
 
-### Limitations
+###  13.2. <a name='Limitations'></a>Limitations
 
 The best-fit line might not be perfect.
 
@@ -313,7 +482,7 @@ The best-fit line might not be perfect.
 
 # Reference
 
-## Smoothing the Data ("Noise" Reduction)
+##  14. <a name='SmoothingtheDataNoiseReduction'></a>Smoothing the Data ("Noise" Reduction)
 
 Current approach in smoothing the data (Blackman Window):
 
@@ -327,7 +496,7 @@ Another approach in smoothing the data:
 
 https://towardsdatascience.com/in-12-minutes-stocks-analysis-with-pandas-and-scikit-learn-a8d8a7b50ee7
 
-## Linear Regression
+##  15. <a name='LinearRegression'></a>Linear Regression
 
 https://medium.com/analytics-vidhya/stock-prediction-using-linear-regression-cd1d8351f536
 
