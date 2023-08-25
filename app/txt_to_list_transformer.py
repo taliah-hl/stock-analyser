@@ -2,7 +2,7 @@
 # run this file to change txt file to list
 # so we can get a list of stock to put in config file
 
-txt_file='hotstock25.txt'  # put txt file name here (file has to be in app folder)
+txt_file='../hi/trylst.txt'  # put txt file name here (file has to be in app folder)
 
 # e.g. file in 1 layer upper in directory
 # txt_file='../hotstock25.txt'

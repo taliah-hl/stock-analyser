@@ -311,7 +311,9 @@ for each row in stock_data:
 | last day | close price|
 
 
+## Log
 
+- log are saved in `./log/`
 
 ##  7. <a name='AdvancedSettings'></a>Advanced Settings
 
