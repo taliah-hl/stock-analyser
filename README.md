@@ -178,6 +178,32 @@ python backtest.py -j=./configs/backtest_config_example.json
 
 **More config example:**
 - see folder [app/configs](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/app/configs?ref_type=heads)
+### Parameter parsing logic when run in command line
+
+All param has to come from same source (e.g. all from command line, or all from config)
+
+for example, you cannot set stock ticker in direct pass from command line, but set buy point filter in config
+
+param parse priority
+```
+look for `-j` `--configfile`
+      V
+look for arguments in command line
+```
+### arguments in command line of `backtest.py`
+
+|argument| description|example|
+|-----|-----|-----|
+|`-t` `--ticker` | stock ticker| PDD
+|`-s` `--start` | start date| 2023-01-01|
+| `-e` `--end` | end date|2023-08-01|
+| `-c` `--capital` | capital| 10000|
+| `-f` `stocklist_file`| stock list file (.txt)|./stock_list.txt|
+| `-j` `--configfile`| config file (.json)|./config.json|
+|`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
+| `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
+| --figsize| figure size of graph ||
+|`-o` `--showopt` | graph show option |"save"<br>"show"<br>"no"   |
 
 ###  4.4. <a name='Importclass'></a>Import class
 
