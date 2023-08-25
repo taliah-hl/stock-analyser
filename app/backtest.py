@@ -110,7 +110,7 @@ class StockAccount():
             logger.warning("no transaction, cannot get final capital, you may want to roll the ACC first.")
             return None
     
-    def cal_buy_and_hold(self):
+    def cal_buy_and_hold(self)->float:
         """
         calculate revenue of buying at first day and selling at last day as control group
         set function of self.revenue_buy_and_hold
@@ -121,6 +121,7 @@ class StockAccount():
             sold = buy_share * self.txn['close price'][-1]
             money_left = money_left+sold
             self.revenue_buy_and_hold = (money_left - self.initial_capital) /self.initial_capital
+            return self.revenue_buy_and_hold
         else:
             logger.warning("no transaction, cannot calculate buy and hold, you may want to roll the ACC first.")
             return
@@ -460,7 +461,7 @@ class BackTest():
 
         return txn_table
         
-    def print_revenue(self, ac_list:list, total_revenue, save_path:str=None, textbox: str=None):
+    def print_revenue(self, ac_list:list, total_revenue, average_rev_buy_hold: float, save_path:str=None, textbox: str=None):
         """
         input: list of acc
         all accs need to be roll first
@@ -492,7 +493,7 @@ class BackTest():
                           'revenue if buy and hold': ac.revenue_buy_and_hold,
                           
                           })
-        table.append({'stock': 'overall', 'revenue': total_revenue })
+        table.append({'stock': 'overall', 'revenue': total_revenue , "revenue if buy and hold": average_rev_buy_hold})
 
         revenue_table=pd.DataFrame( table, columns=['start', 'end', 
                                             'stock','buy strategy', 'sell strategy', 'revenue', 'trade times', 'revenue if buy and hold'])
@@ -567,6 +568,7 @@ def runner(tickers, start:str, end:str, capital:float,
         back_test.set_sell_strategy(strategy=sell_strategy, ts_percent=ts_percent, fixed_sl=fixed_sl, profit_target=profit_target)
 
         acc_list=[]
+        rev_bh_list =[]
         total_finl_cap=0
         for item in tickers:
             ac = StockAccount(item, start, end, capital)
@@ -587,7 +589,7 @@ def runner(tickers, start:str, end:str, capital:float,
                 logger.error(err)
                 continue
             rev=ac.cal_revenue()
-            ac.cal_buy_and_hold()
+            rev_buy_hold = ac.cal_buy_and_hold()
             ac.no_of_trade = back_test.trade_tmie_of_ac
             if print_all_ac and ac.txn is not None:
                 ac.print_txn()
@@ -598,6 +600,7 @@ def runner(tickers, start:str, end:str, capital:float,
             
             try:
                 total_finl_cap += ac.cal_final_capital()
+                rev_bh_list.append(rev_buy_hold)
                 logger.info(f"revenue of {item}: {rev}")
                 logger.info(f" Back Test of {item} done")
             except Exception as err:
@@ -605,9 +608,10 @@ def runner(tickers, start:str, end:str, capital:float,
                 continue
             acc_list.append(ac)
 
+        avg_rev_bh = sum(rev_bh_list) / len(rev_bh_list)
         final_rev = ( total_finl_cap - capital * len(tickers))/(capital * len(tickers))
         logger.info(f"total revenue of run: {final_rev}")
-        back_test.print_revenue(acc_list, final_rev, save_path=csv_dir, textbox=f'trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}')
+        back_test.print_revenue(acc_list, final_rev, avg_rev_bh, save_path=csv_dir, textbox=f'trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}')
         return final_rev
 
 def yearly_test():
