@@ -72,7 +72,6 @@ class StockAccount():
         save_path_norepeat += '.csv'
 
         self.cal_revenue()
-        self.cal_buy_and_hold()
         self.txn.to_csv(save_path_norepeat)
         with open(save_path_norepeat, 'a') as fio:
             fio.write(textbox)
@@ -488,11 +487,15 @@ class BackTest():
 
         for ac in ac_list:
             table.append({'stock': ac.ticker, 
-                          'revenue': ac.get_revenue()})
+                          'revenue': ac.get_revenue(),
+                          "trade times": ac.no_of_trade,
+                          'revenue if buy and hold': ac.revenue_buy_and_hold,
+                          
+                          })
         table.append({'stock': 'overall', 'revenue': total_revenue })
 
         revenue_table=pd.DataFrame( table, columns=['start', 'end', 
-                                            'stock','buy strategy', 'sell strategy', 'revenue'])
+                                            'stock','buy strategy', 'sell strategy', 'revenue', 'trade times', 'revenue if buy and hold'])
         
         revenue_table['start']  = ac_list[0].start
         revenue_table['end']  = ac_list[0].end
@@ -543,6 +546,7 @@ def runner(tickers, start:str, end:str, capital:float,
         ac.no_of_trade = back_test.trade_tmie_of_ac
         
         rev=ac.cal_revenue()
+        ac.cal_buy_and_hold()
        
         ac.print_txn()
         str_to_print = f'{tickers}: trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}\n'
@@ -583,6 +587,8 @@ def runner(tickers, start:str, end:str, capital:float,
                 logger.error(err)
                 continue
             rev=ac.cal_revenue()
+            ac.cal_buy_and_hold()
+            ac.no_of_trade = back_test.trade_tmie_of_ac
             if print_all_ac and ac.txn is not None:
                 ac.print_txn()
                 str_to_print = f'{item}: trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}'
@@ -690,13 +696,11 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ticker','-t', help='stock symbol',type=str, default='NVDA')
-    parser.add_argument('--start','-s', help='start date',  type=str, default='2022-07-20')
-    parser.add_argument('--end', '-e', help='end date', type=str, default='2023-08-03')
+    parser.add_argument('--ticker','-t', help='stock symbol',type=str, default='')
+    parser.add_argument('--start','-s', help='start date',  type=str, default='')
+    parser.add_argument('--end', '-e', help='end date', type=str, default='')
     parser.add_argument('--capital', '-c', help='initial captial', type=float, default=10000)
 
-    parser.add_argument('--buy', '-b', help='buy strategy, 1=conv drop', type=int, default=1)
-    parser.add_argument('--sell', '-p', help='sell strategy, number code same as class SellStrategy', type=int, default=5)
 
     parser.add_argument('--stocklist_file', '-f', help='stock list file dir', type=str, default=None)
     parser.add_argument('--csv_dir', '-v', help='csv folder dir (file name is pre-set), default=../../', type=str, default='../../result/')
@@ -730,8 +734,6 @@ if __name__ == "__main__":
         stockstart = args.start
         stockend = args.end
         capital= args.capital
-        sells=args.sell
-        buys=args.buy
         stock_lst_file = args.stocklist_file
         graph_file_dir = args.graph_dir
         graph_figsize=args.figsize
