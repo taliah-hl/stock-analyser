@@ -496,11 +496,14 @@ class BackTest():
         table.append({'stock': 'overall', 'revenue': total_revenue , "revenue if buy and hold": average_rev_buy_hold})
 
         revenue_table=pd.DataFrame( table, columns=['start', 'end', 
-                                            'stock','buy strategy', 'sell strategy', 'revenue', 'trade times', 'revenue if buy and hold'])
+                                            'stock','buy point filter', 'sell strategy', 'revenue', 'trade times', 'revenue if buy and hold'])
         
         revenue_table['start']  = ac_list[0].start
         revenue_table['end']  = ac_list[0].end
-        revenue_table['buy strategy']  = self.buy_strategy
+        filter_str = ''
+        for item in self.bp_filters:
+            filter_str += (item.name+', ')
+        revenue_table['buy point filter']  = filter_str
         revenue_table['sell strategy']  = self.sell_strategy
 
         revenue_table.to_csv(save_path_norepeat)

@@ -324,7 +324,10 @@ class StockAnalyser():
         """
         smoothen ['col_name'] of self.stock_data
         - set fcuntion of self.smoothen_price
-        - no return
+        
+        return
+        -----
+        smoothed price
 
         Parameter
         -----
@@ -415,7 +418,6 @@ class StockAnalyser():
     def set_extrema(self, src_data: pd.Series, close_price: pd.Series, interval: int=0, window_dir: str='left', stock: str=''):
         """
         set function of self.extrema, self.peak_indexes, self.bottom_indexes
-        - if data not specified, calulate base on self.smoothen_price 
         
         Parameter
         ---------
@@ -1288,7 +1290,7 @@ class StockAnalyser():
 
     def default_analyser(self, tickers: str, start: str, end: str,
             method: str='', T: int=0, 
-            window_size=10, smooth_ext=10, zzupthres: float=0.09, zzdownthres: float=0.09,
+            window_size=10, smooth_ext=10, smooth:bool=False, zzupthres: float=0.09, zzdownthres: float=0.09,
             trend_col_name: str='slope signal',
            bp_filters:set=set(),
            ma_short_list: list=[], ma_long_list=[],
@@ -1306,15 +1308,28 @@ class StockAnalyser():
             
         Parameter
 
-        - method: options: 'ma', 'ema', 'dma', 'butter', 'close'|
-        - T: day range of taking ma/butterworth low pass filter |
+        - `method`: price source to calculate extrema, options: 'ma', 'ema', 'dma', 'butter', 'close'|
+        - `T`: period of moving average if method set to 'ma', 'ema' or any kind with period required (no effect if method set to 'close')
+       - `window_size`: window size to locate extrema from price source specified in `method` (no effect if method set to 'close')
+        - `smooth`: if set to true, will set smoothen price and save to `self.smoothen_price`
+            - has no effect on break point
+            - smooth close price by linear convolution with np.blackman
+
+        - `smooth_ext`: smooth extend to apply if `smooth`=true
+        - `zzupthres`, `zzdownthres`: up/down threshold of zigzag indicator
+        - `trend_col_name`:  source of uptrend signal, 'zz': zigzag indicator, 'signal': MACD signal
+        - `bp_filters`: set class `BuyptFilter` to use
+        - `extra_text_box`: text to print on graph (left top corner)
         - ma_short_list, ma_long_list: list of int, e.g. [3, 20], [9]
         - plot_ma: list of string, e.g. ma9, ema12
-        - window_size: window to locate extrema from approx. price |
-        - bp_filters: set of BuypointFilter, filter to applied to find buy point
-        - extra_text_box: extra textbox to print on graph|
-        - graph_showOption: 'save', 'show', 'no'
+        - `graph_showOption`: 'save', 'show', 'no'
+        - `graph_dir`: dir to save graph
+        - `figsize`: figure size of graph 
+        - recommend: 1-3 months: figsize=(36,16)
+        - `annotfont`: font size of annotation of peak bottom 
+        - recommend: 4-6
 
+ 
     
         """
         plot_ma_num=[]
@@ -1345,7 +1360,6 @@ class StockAnalyser():
         logger.debug(f"config set:\nmethod={method}\tT={T}\ntrend={trend_col_name}\t{extra_text_box}")
 
         extra_col_name =set()
-        smooth=False
 
         ## Parameter Checking
 
