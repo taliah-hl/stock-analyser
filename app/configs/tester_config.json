@@ -1,19 +1,15 @@
 {
-    "ticker": ["brk-b"],
-    "start": "2021-11-01",
-    "end": "2022-11-01",
-
-    "buy point filters": [
-      "IN_UPTREND"
-
-    ],
-    "stop loss percent": 0.05,
-    "fixed stop loss percent": 0.03,
-    "buy strategy": "FOLLOW_BUYPT_FILTER",
-    "sell strategy": "TRAILING_AND_FIXED_SL",
-    "graph show option": "no",
-    "graph dir": "../../result",
-    "csv dir": "../../result",
-    "print all ac": true
-  }
-  
+  "ticker": "tsla",
+  "start": "2022-08-01",
+  "end": "2023-08-25",
+  "plot ma": ["ma3", "ema9", "ma20"],
+  "buy point filters": ["CONVERGING_DROP", "RISING_PEAK"],
+  "stop loss percent": 0.05,
+  "fixed stop loss percent": 0.03,
+  "buy strategy": "FOLLOW_BUYPT_FILTER",
+  "sell strategy": "TRAILING_AND_FIXED_SL",
+  "graph show option": "save",
+  "graph dir": "../../result",
+  "csv dir": "../../result",
+  "print all ac": true
+}

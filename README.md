@@ -6,30 +6,33 @@
 	* 4.1. [run in command line](#runincommandline)
 	* 4.2. [run by config in command line (.json)](#runbyconfigincommandline.json)
 	* 4.3. [Table of parameters in JSON config file](#TableofparametersinJSONconfigfile)
-	* 4.4. [Import class](#Importclass)
+	* 4.4. [Parameter parsing logic when run in command line](#Parameterparsinglogicwhenrunincommandline)
+	* 4.5. [arguments in command line of `backtest.py`](#argumentsincommandlineofbacktest.py)
+	* 4.6. [Import class](#Importclass)
 * 5. [Columns in `StockAnalyser.stock_data`](#ColumnsinStockAnalyser.stock_data)
 	* 5.1. [default file output dir and file name](#defaultfileoutputdirandfilename)
 * 6. [Columns in `StockAccount.txn`](#ColumnsinStockAccount.txn)
 	* 6.1. [default file output dir and file name](#defaultfileoutputdirandfilename-1)
-	* 6.2. [Buy Sell Logic](#BuySellLogic)
-* 7. [Advanced Settings](#AdvancedSettings)
-	* 7.1. [Source of Extrema:](#SourceofExtrema:)
-	* 7.2. [Source of uptrend](#Sourceofuptrend)
-	* 7.3. [Parameter of StockAnalyser.default_analyser](#ParameterofStockAnalyser.default_analyser)
-* 8. [Example Result](#ExampleResult)
-* 9. [Techniques Studied](#TechniquesStudied)
-	* 9.1. [Stock price smoothing technique](#Stockpricesmoothingtechnique)
-* 10. [Bug to be solved:](#Bugtobesolved:)
-* 11. [2021 Version](#Version)
-* 12. [Peaks and Bottoms](#PeaksandBottoms)
-	* 12.1. [Example](#Example)
-	* 12.2. [Limitations Using Blackman Window](#LimitationsUsingBlackmanWindow)
-	* 12.3. [Limitations Using Polynomial Regression](#LimitationsUsingPolynomialRegression)
-* 13. [Trend](#Trend)
-	* 13.1. [Example](#Example-1)
-	* 13.2. [Limitations](#Limitations)
-* 14. [Smoothing the Data ("Noise" Reduction)](#SmoothingtheDataNoiseReduction)
-* 15. [Linear Regression](#LinearRegression)
+* 7. [Buy Sell Logic](#BuySellLogic)
+* 8. [Log](#Log)
+* 9. [Advanced Settings](#AdvancedSettings)
+	* 9.1. [Source of Extrema:](#SourceofExtrema:)
+	* 9.2. [Source of uptrend](#Sourceofuptrend)
+	* 9.3. [Parameter of StockAnalyser.default_analyser](#ParameterofStockAnalyser.default_analyser)
+* 10. [Example Result](#ExampleResult)
+* 11. [Techniques Studied](#TechniquesStudied)
+	* 11.1. [Stock price smoothing technique](#Stockpricesmoothingtechnique)
+* 12. [Bug to be solved:](#Bugtobesolved:)
+* 13. [2021 Version](#Version)
+* 14. [Peaks and Bottoms](#PeaksandBottoms)
+	* 14.1. [Example](#Example)
+	* 14.2. [Limitations Using Blackman Window](#LimitationsUsingBlackmanWindow)
+	* 14.3. [Limitations Using Polynomial Regression](#LimitationsUsingPolynomialRegression)
+* 15. [Trend](#Trend)
+	* 15.1. [Example](#Example-1)
+	* 15.2. [Limitations](#Limitations)
+* 16. [Smoothing the Data ("Noise" Reduction)](#SmoothingtheDataNoiseReduction)
+* 17. [Linear Regression](#LinearRegression)
 
 <!-- vscode-markdown-toc-config
 	numbering=true
@@ -178,7 +181,7 @@ python backtest.py -j=./configs/backtest_config_example.json
 
 **More config example:**
 - see folder [app/configs](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/app/configs?ref_type=heads)
-### Parameter parsing logic when run in command line
+###  4.4. <a name='Parameterparsinglogicwhenrunincommandline'></a>Parameter parsing logic when run in command line
 
 All param has to come from same source (e.g. all from command line, or all from config)
 
@@ -190,7 +193,7 @@ look for `-j` `--configfile`
       V
 look for arguments in command line
 ```
-### arguments in command line of `backtest.py`
+###  4.5. <a name='argumentsincommandlineofbacktest.py'></a>arguments in command line of `backtest.py`
 
 |argument| description|example|
 |-----|-----|-----|
@@ -205,7 +208,7 @@ look for arguments in command line
 | --figsize| figure size of graph ||
 |`-o` `--showopt` | graph show option |"save"<br>"show"<br>"no"   |
 
-###  4.4. <a name='Importclass'></a>Import class
+###  4.6. <a name='Importclass'></a>Import class
 
 - see demo: [`app/stock_analyser_backtest_demo.ipynb`](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/app/stock_analyser_backtest_demo.ipynb?ref_type=heads)
   
@@ -259,7 +262,7 @@ look for arguments in command line
 |latest high | highest close price reached after the latest buy action |
 |+- | only appear in row that have sell action <br>=percentage gain in that buy-sell pair|
 | trigger| trigger reason of sell<br>example<br>trail stop (reach trailing stop loss price)<br>fixed SL (reach fixed stop loss price)<br>profit target (reach profit target)<br> last day (forced sell on last day of back test) |
-###  6.2. <a name='BuySellLogic'></a>Buy Sell Logic
+##  7. <a name='BuySellLogic'></a>Buy Sell Logic
 
 conduct in `roll` methed of `BackTest`
 
@@ -311,13 +314,13 @@ for each row in stock_data:
 | last day | close price|
 
 
-## Log
+##  8. <a name='Log'></a>Log
 
 - log are saved in `./log/`
 
-##  7. <a name='AdvancedSettings'></a>Advanced Settings
+##  9. <a name='AdvancedSettings'></a>Advanced Settings
 
-###  7.1. <a name='SourceofExtrema:'></a>Source of Extrema:
+###  9.1. <a name='SourceofExtrema:'></a>Source of Extrema:
 
 - find extrema from selected price source using `scipy.signal.argrelextrema`
 
@@ -340,7 +343,7 @@ for each row in stock_data:
 - the period for ma / ema / dma / butter in `method`
 - has no effect if `method` set as 'close'
 
-###  7.2. <a name='Sourceofuptrend'></a>Source of uptrend
+###  9.2. <a name='Sourceofuptrend'></a>Source of uptrend
 
 - controlled by: `trend_col_name` in StockAnalyser.default_analyser 
 - options: any column, with value >0 indicate uptrend, < 0 indicate downtrend
@@ -349,30 +352,29 @@ for each row in stock_data:
 
 
 
-###  7.3. <a name='ParameterofStockAnalyser.default_analyser'></a>Parameter of StockAnalyser.default_analyser
+###  9.3. <a name='ParameterofStockAnalyser.default_analyser'></a>Parameter of StockAnalyser.default_analyser
 
 main runner of class `StockAnalyser`: `StockAnalyser.default_analyser`
 
-TO BE WRITTEN
-| param | description |
-| ------ | ------ |
-|        |        |
-|        |        |
 
 
-Parameter of `runner_analyser`
+Parameter of `StockAnalyser.default_analyser`
 - `tickers`: stock symbol
 - `method`: price source to calculate extrema
-- `T`: period of moving average if method set to 'ma', 'ema' or any kind with period required (no effect if method set to 'close')
+- `T`: period of moving average if method set to 'ma', 'ema', 'butter' or any kind with period required (no effect if method set to 'close')
 - `window_size`: window size to locate extrema from price source specified in `method` (no effect if method set to 'close')
+- `smooth`: if set to true, will set smoothen price and save to `self.smoothen_price`
+  - has no effect on break point
+  - smooth close price by linear convolution with np.blackman
+
+- `smooth_ext`: smooth extend to apply if `smooth`=true
 - `zzupthres`, `zzdownthres`: up/down threshold of zigzag indicator
-- `bp_trend_src`:  source of uptrend signal, 'zz': zigzag indicator, 'signal': MACD signal
-- `bp_filter_conv_drop`: to apply converging bottom filter or not when finding breakpoint
-- `bp_filter_rising_peak`: to apply rising peak filter or not when finding breakpoint
-- `bp_filter_uptrend`: to apply uptrend detected filter or not when finding breakpoint (only have effect if trend source is zigzag)
+- `trend_col_name`:  source of uptrend signal, 'zz': zigzag indicator, 'signal': MACD signal
+- `bp_filters`: set class `BuyptFilter` to use
 - `extra_text_box`: text to print on graph (left top corner)
 - `graph_showOption`: 'save', 'show', 'no'
 - `graph_dir`: dir to save graph
+- `csv_dir`: dir to save csv
 - `figsize`: figure size of graph 
   - recommend: 1-3 months: figsize=(36,16)
 - `annotfont`: font size of annotation of peak bottom 
@@ -381,15 +383,16 @@ Parameter of `runner_analyser`
 
 
 
-
-##  8. <a name='ExampleResult'></a>Example Result
+##  10. <a name='ExampleResult'></a>Example Result
 
 result of plotting extrema from different price source: 
 - `result_plot_extrema.pdf`
-- MORE EXAMPLE TO BE WRITTEN
+- Example plot: `/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png`
+  - break point found by peak-bottom
+- batch of back test using different period and buy, sell condition is shown in `/example` folder and `exmaple_result.md`
 
-##  9. <a name='TechniquesStudied'></a>Techniques Studied
-###  9.1. <a name='Stockpricesmoothingtechnique'></a>Stock price smoothing technique
+##  11. <a name='TechniquesStudied'></a>Techniques Studied
+###  11.1. <a name='Stockpricesmoothingtechnique'></a>Stock price smoothing technique
 - Moving Averages (MA, EMA, DMA)
 - Butterworth Low Pass Filter
 - polyfit
@@ -398,10 +401,10 @@ result of plotting extrema from different price source:
 detail discussion of pros and cons of different techniques see `technique_and_theory.md`
 
 
-##  10. <a name='Bugtobesolved:'></a>Bug to be solved:
+##  12. <a name='Bugtobesolved:'></a>Bug to be solved:
 - ema (hence MACD) in early segment of stock data is not accurate, since ema is calculate base on yesturday's ema, so much earlier data before the specified start is required to get an accurate ema
 
-##  11. <a name='Version'></a>2021 Version
+##  13. <a name='Version'></a>2021 Version
 ---
 
 - [Stock](#stock)
@@ -444,7 +447,7 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 
 # Logic and Design
 
-##  12. <a name='PeaksandBottoms'></a>Peaks and Bottoms
+##  14. <a name='PeaksandBottoms'></a>Peaks and Bottoms
 
 ![](./docs/Screenshot%202021-08-16%20184841.png)
 
@@ -452,11 +455,11 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 - Find the approximate peaks and bottoms using the smoothed trend
 - Find the actual peaks and bottoms using the real data
 
-###  12.1. <a name='Example'></a>Example
+###  14.1. <a name='Example'></a>Example
 
 ![](./docs/NVDA%20Peaks%20and%20Bottoms.png)
 
-###  12.2. <a name='LimitationsUsingBlackmanWindow'></a>Limitations Using Blackman Window
+###  14.2. <a name='LimitationsUsingBlackmanWindow'></a>Limitations Using Blackman Window
 
 For a longer period of time, the value of `smooth_data_N` and `find_extrema_interval` has to change to other value.
 
@@ -472,7 +475,7 @@ Solution:
 
 ![](./docs/NVDA%20Peaks%20and%20Bottoms%203.png)
 
-###  12.3. <a name='LimitationsUsingPolynomialRegression'></a>Limitations Using Polynomial Regression
+###  14.3. <a name='LimitationsUsingPolynomialRegression'></a>Limitations Using Polynomial Regression
 
 The degree cannot be too large when there are a lot of data.
 
@@ -480,11 +483,11 @@ It might not work when the given period (number of record) is too large.
 
 ---
 
-##  13. <a name='Trend'></a>Trend
+##  15. <a name='Trend'></a>Trend
 
 - Use linear regression and plot a best-fit line.
 
-###  13.1. <a name='Example-1'></a>Example
+###  15.1. <a name='Example-1'></a>Example
 
 `stock_info = yf.download("^HSI", start="2000-01-01", end="2003-06-15")`
 
@@ -494,7 +497,7 @@ It might not work when the given period (number of record) is too large.
 
 ![NVDA Linear Regression](./docs/NVDA%20Linear%20Regression.png)
 
-###  13.2. <a name='Limitations'></a>Limitations
+###  15.2. <a name='Limitations'></a>Limitations
 
 The best-fit line might not be perfect.
 
@@ -510,7 +513,7 @@ The best-fit line might not be perfect.
 
 # Reference
 
-##  14. <a name='SmoothingtheDataNoiseReduction'></a>Smoothing the Data ("Noise" Reduction)
+##  16. <a name='SmoothingtheDataNoiseReduction'></a>Smoothing the Data ("Noise" Reduction)
 
 Current approach in smoothing the data (Blackman Window):
 
@@ -524,7 +527,7 @@ Another approach in smoothing the data:
 
 https://towardsdatascience.com/in-12-minutes-stocks-analysis-with-pandas-and-scikit-learn-a8d8a7b50ee7
 
-##  15. <a name='LinearRegression'></a>Linear Regression
+##  17. <a name='LinearRegression'></a>Linear Regression
 
 https://medium.com/analytics-vidhya/stock-prediction-using-linear-regression-cd1d8351f536
 
