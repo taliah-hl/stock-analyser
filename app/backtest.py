@@ -816,6 +816,7 @@ if __name__ == "__main__":
         graph_file_dir = confjson.get("graph dir", '../../result')
         csv_dir = confjson.get("csv dir", '../../result')
         print_all_ac =confjson.get("print all ac", False)
+        annotfont = confjson.get("graph font size", 4)
         
         print(type(stockticker))
 
@@ -859,7 +860,8 @@ if __name__ == "__main__":
                 plot_ma= plot_ma,
                 graph_showOption=graph_show_opt,
                 graph_dir=graph_file_dir,
-                print_all_ac=print_all_ac, csv_dir=csv_dir)
+                print_all_ac=print_all_ac, csv_dir=csv_dir,
+                annotfont=annotfont)
 
 
 
