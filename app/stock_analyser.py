@@ -22,7 +22,7 @@ class DayType(enum.Enum):
     BUYPT=1
     SELLPT=2
     BREAKPT=3
-    NAN=0   #add peak, bottom
+    NAN=0   
 
 class BuyptFilter(enum.Enum):
     # buy point filters
@@ -74,6 +74,17 @@ class StockAnalyser():
         return days[0].tz_localize(None)
 
     def download(self, tickers: str, start: str, end: str, pre_start: str=None)->pd.DataFrame:
+        """
+        parameter
+        -----
+        `tickers`: stock ticker | `start`: user specified start date yyyy-mm-dd | `end`: end date | `pre_start`: actual date start download stock data for caculate MA
+        
+        return 
+
+        self.stock_data
+
+        ---
+        """
         # Load stock info
         if pre_start is not None:
             stock_info = yf.download(tickers, start=pre_start, end=end)
@@ -124,10 +135,22 @@ class StockAnalyser():
 
         if writeToTxt:
             with open(file_name, 'w') as fio:
-                fio.write(tabulate(self.stock_data, headers='keys', tablefmt='psql', floatfmt=("", ".2f",".2f", "g",".2%", "g", "g", )))
+                fio.write(tabulate(self.stock_data, headers='keys', tablefmt='psql', floatfmt=("", ".2f", "g",".2%", "g", "g", "g",".2f", ".2f", ".2f",".2f",".4f",".4f","g")))
             logger.info(f"stock_data wrote to {file_name}")
     
-    def stock_data_to_csv(self, csv_dir: str=None):
+    def stock_data_to_csv(self, csv_dir: str=None)->None:
+        """
+        print self.stock_data to csv
+
+        parameter
+        ----
+
+        `csv_dir`: directory to save csv file
+
+        return
+
+        None
+        """
 
         if csv_dir is None:
             csv_dir='../../back_test_result/'
@@ -184,7 +207,7 @@ class StockAnalyser():
         """
         return self.stock_data[col_name]
 
-    def get_all_col_name(self):
+    def get_all_col_name(self)->list:
         """
         return list of str of all col in self.stock_data
         """
@@ -195,6 +218,7 @@ class StockAnalyser():
         """
         add a column of moving average (MA) to stock_data
         return: ma
+
         Parameter
         -----
         - src_data: pd.Series of source stock price to cal ma
@@ -252,6 +276,10 @@ class StockAnalyser():
         calculate slope of segment of given pd.Series
         - src_data: source of data to calculate slope pd.Series
 
+        return 
+
+        pd.Serise showing slope of src_data
+
         """
         slope_lst=[np.nan]
         for i in range(1, len(src_data)):
@@ -262,7 +290,7 @@ class StockAnalyser():
         self.stock_data[f'slope {src_data.name}'] = slope_lst
         return self.stock_data[f'slope {src_data.name}']
 
-    def __add_col_macd_group(self, src_data: pd.Series)->None:
+    def __add_col_macd_group(self)->None:
         """"
         add column of ema12, ema26, macd, signal line and slope of macd
         no return
@@ -302,7 +330,14 @@ class StockAnalyser():
         filter frequency smaller than filter_period by Butterworth Low Pass Filter
         result is put into self.stock_data['buttered {src_col}']
 
-        inputs
+        parameter
+        ---
+        - src_data: source data to be filtered
+        - filter_period: smallest period to keep (vibration of smaller period will be filtered out)
+
+        return:
+
+        filtered sequence
 
         exmaple: filter fluctuation within 10days=> set filter_period=10
         ref: https://nehajirafe.medium.com/using-fft-to-analyse-and-cleanse-time-series-data-d0c793bb82e3
@@ -350,6 +385,10 @@ class StockAnalyser():
         Parameter
         -----
         N: extend of smoothening. smaller->More accurate; larger -> more smooth
+
+        return
+        -----
+        smoothed price
         """
         degree = 10
 
@@ -370,10 +409,14 @@ class StockAnalyser():
     def smoothen_non_mutate(self, original_data: pd.Series, N: int=10) -> pd.DataFrame:     #can be delete later
         """
         Return: 1-col-DataFrame of smoothen data (length differ with original data)
-        non-mutating
-        Argument
+        won't save to self
+        Parameter
         ------
         - original_data: time Series of stock price
+
+        return
+        -----
+        smoothed price
         """
         # Smaller N -> More accurate
         # Larger N -> More smooth
@@ -386,7 +429,12 @@ class StockAnalyser():
     
     def add_col_all_vertex(self, src_data: pd.Series)-> None:
         """
-        just locate all vertex by comparing with prev 1 and foraward 1 data 
+        locate all vertex of stock price by comparing with prev 1 and back 1 data 
+        set function of self.vertex, type (from vertex) and p-b change (from vertex) column of stock_data
+        - point that is higher than the prev 1 point and back 1 point is defined as peak, 
+        - point that is lower than the prev 1 point and back 1 point is defined as bottom 
+
+        return : None
         """
         peaks_lst=[]
         peak_dates=[]
@@ -415,7 +463,7 @@ class StockAnalyser():
 
             
 
-    def set_extrema(self, src_data: pd.Series, close_price: pd.Series, interval: int=0, window_dir: str='left', stock: str=''):
+    def set_extrema(self, src_data: pd.Series, close_price: pd.Series, interval: int=0, window_dir: str='left', stock: str='')->None:
         """
         set function of self.extrema, self.peak_indexes, self.bottom_indexes
         
@@ -424,6 +472,7 @@ class StockAnalyser():
         - src_data: col name of source to calculate extrema
         - close_price: pd.Series of close price
         - interval: window to locate peak/bottom price on original price by source price
+        - window_dir: 'left' : only create window to left hand side
 
         """
 
@@ -566,6 +615,20 @@ class StockAnalyser():
 
 
     def set_zigizag_trend(self, src_data: pd.Series, upthres: float=0.09, downthres: float=0.09) -> None:
+        """
+        set function of column 'zigzag', 'zz trend' of self.stock_data |
+        - col 'zigzag': value of zigzag indicator, 1=peak, 0=bottom
+        - col 'zz trend': up/down trend according to zigzag indicator -1=downtrend 1=uptrend
+
+        Parameter 
+        ---
+        - `upthres`: up threshold of zigzag indicator
+        - `downthres`: down threshold of zigzag indicator
+
+
+        source of zigzag indicator: https://pypi.org/project/zigzag/
+
+        """
         self.zzthres = upthres
         self.stock_data['zigzag'] = np.nan
         self.stock_data['zigzag'] = zz.peak_valley_pivots(src_data, upthres, -downthres)
@@ -585,8 +648,18 @@ class StockAnalyser():
                 self.stock_data.iloc[i, trend_col] = self.stock_data['zz trend'][i-1]
         logger.debug("set trend done")
 
-    def _add_col_zzuptrend_detected(self, upthres: float=0.09, downthres: float=0.09):
+    def _add_col_zzuptrend_detected(self, upthres: float=0.09, downthres: float=0.09)->pd.DataFrame:
         """
+        
+        - set function of column 'zz uptrend detected' of self.stock_data
+
+        for rows in stock data in up trend of zigzag indicator, check if that datte has acutally rise > upthres from previous bottom
+        - purpose: minimize repainting effect of zigzag indicator (try to see if time roll back to that day, will up trend still be detected)
+
+        parameter
+        --
+        - `upthres`: up threshold of zigzag indicator
+        return: self.stock_data['zz uptrend detected']
         """
         try:
             assert 'zigzag' in self.stock_data
@@ -610,13 +683,18 @@ class StockAnalyser():
     
     def __is_uptrend(self, row: int, trend_col_name: str=None, zz_thres: float=0.09)->bool:
         """
-        return 
-
-        if that row of self.stock_data is in uptrend
-         - trend_col_name: name of col in self.stock_data to use as source to calculate trend , with value >0 indicate uptrend, < 0 indicate downtrend
-
-        - row: which row of self.stock_data
+        return
+        ---
+        whether that row of self.stock_data is in uptrend
         - return True if trend_col_name not specified (assume no need to filter out downtrend)
+        
+        Parameter
+        ---
+        - `trend_col_name`: name of col in self.stock_data to use as source to calculate trend , with value >0 indicate uptrend, < 0 indicate downtrend
+        - `upthres`: up threshold of zigzag indicator (only need if `trend_col_name` is 'zigzag')
+
+        - `row`: which row of self.stock_data
+        
         """
         if trend_col_name == 'zigzag':
             if 'zz uptrend detected' not in self.stock_data:
@@ -629,10 +707,15 @@ class StockAnalyser():
     
 
 
-    def __get_conv_drop_rise_peak_list(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None, zzupthres: float=0.09):
+    def __get_conv_drop_rise_peak_list(self, conv_drop_filter: bool, rise_peak_filter: bool, trend_col_name: str=None, zzupthres: float=0.09)->list:
         
         """
-        return: list of index
+        return: list of index of converging bottom and/or rising peak
+        
+        parameter
+
+        - `conv_drop_filter`:  whether to check peak has drop < previos peak, true=to check, false=don't check
+        - `rise_peak_filter`: whether to check rise above previous peak before next peak, true=to check, false=don't check 
 
         
         """
@@ -642,7 +725,7 @@ class StockAnalyser():
             assert 'close' in self.stock_data
         except AssertionError:
             logger.error("self.stock_data must contain column: \'type\', \'p-b change\' \nprogram exit")
-            exit(0)
+            exit(1)
             
 
         
@@ -763,7 +846,7 @@ class StockAnalyser():
         res = True # and of all comparison of MAs 
         if len(short) != len(long):
                 raise Exception("list of short is not same as list of long, cannot get is_ma_above, program exit")
-                exit(0)
+                exit(1)
         
         for i in range(0, len(short)):
             res = res and stock_data[f'ma{short[i]} above ma{long[i]}'][row]
@@ -813,18 +896,18 @@ class StockAnalyser():
                        trend_col_name: str=None,
                        bpfilters: set=set(),
                        ma_short: list=None, ma_long: list=None,
-                       rsi_thres: float=0, zz_thres: float=0)-> pd.DataFrame :
+                       rsi_thres: float=0, zz_thres: float=0)->None :
         """
-        deving new version 
-         Parameter 
+        - set function of 'buy pt' column of self.stock_data
+
+        Parameter 
         ---------
-        required col of stock_data: | type | p-b change | zigzag (if uptrend src selected as zigzag) | trend source (if uptrend_src=='any')
+        required col of stock_data: | type | p-b change | zigzag (if uptrend src selected as zigzag) | {trend_col_name}
         - trend_col_name: name of col of trend in stock_data, (not required if uptrend_src=='zz'), with value >0 indicate uptrend, < 0 indicate downtrend
         - col 'type': (int/bool) mark peak as 1, bottom as 0, index as pd.dateTime
         - col 'p-b change': (float) mark peak-to-bottom percentage change at each row of bottom, index as pd.dateTime
-        - col {trend_src}: (float), >0 indicate uptrend, < 0 indicate downtrend
-        - uptrend_src: 'zz': use 'zigzag' col to cal bp, 'any': use {trend_col_name} to cal bp
-        - zzupthres: required if uptrend_src=='zz'
+        - col {trend_col_name}: (float), >0 indicate uptrend, < 0 indicate downtrend
+        - zzupthres: required if trend_col_name=='zigzag'
         - bpfilters: set of class BuyptFilter
         """
         try:
@@ -965,6 +1048,8 @@ class StockAnalyser():
 
     def set_buy_point(self, source: pd.Series)->pd.Series:
         """
+        - set function of 'day of interest' column of self.stock_data
+
         parameter: 
 
         - source: pd.Serise with cell=1 indicate buy point 
@@ -1046,16 +1131,22 @@ class StockAnalyser():
                                to_plot_bp: bool=True, to_plot_zz: bool= True, to_shade_updown: bool=True,
                                plt_title: str='Extrema', annot: bool=True, text_box: str='', annotfont: float=6,
                                
-                                showOption: str='show', savedir: str='', figsize: tuple=(36, 16), figdpi: int=200) :
+                                showOption: str='show', savedir: str='', figsize: tuple=(36, 16), figdpi: int=200)->None :
 
         """
-        default plot function, plot closing price of stock_data, self.smoothen_price and self.extrema
+        - default plot function, plot close price, smoothen_price, extrema, break point, MAs, MACD
         
         Paramter
         -------
-        cols: col names to plot | text_box: string in text box to print |
-        showOption: 'show': show by plt.show, 'save': save graph without showing 
-        savedir: dir to save plot |
+        - `stock_data`: soucr of stock data to plot
+        - cols: col names to plot | 
+        - `extrema` : df of peak, bottom
+        - `to_plot_bp`: to plot break point or not |  `to_plot_zz`: to plot zigzag indicator or not  |  `to_shade_updown`: to shade region of MACD Signal >0 and <0 or not
+        - `plt_title`: graph title 
+        - `annot`: to annotate date of every peak, bottom or not | `text_box`: string in text box to print | `annotfont`: font of annotation
+        - `figsize`: figsize pass to plt | `figdpi`: figdpi pass to plt 
+        - showOption: depreciated
+        - savedir: depreciated
 
          """
         
@@ -1234,6 +1325,9 @@ class StockAnalyser():
 
 
     def plot_zigzag(self, plt_title: str='Zigzag Indicator', annot: bool=True, text_box: str='', annotfont: float=6, showOption: str='show', savedir: str='') :
+        """
+        TO BE DEVELOPPED
+        """
         #plt.figure(figsize=(24, 10), dpi=200)
 
         up_offset = self.stock_data['close'][-1]*0.01
@@ -1262,6 +1356,9 @@ class StockAnalyser():
         
     
     def plot_break_pt(self):
+        """
+        TO BE DEVELOPPED
+        """
         try:
             assert 'buy pt' in self.stock_data
         except AssertionError:
@@ -1303,10 +1400,13 @@ class StockAnalyser():
         """
         run everything
 
-        return: self.stock_data, dataframe of stock informartion
+        return
+        ---
+        `self.stock_data`, dataframe of stock informartion
 
             
         Parameter
+        ----
 
         - `method`: price source to calculate extrema, options: 'ma', 'ema', 'dma', 'butter', 'close'|
         - `T`: period of moving average if method set to 'ma', 'ema' or any kind with period required (no effect if method set to 'close')
@@ -1317,19 +1417,15 @@ class StockAnalyser():
 
         - `smooth_ext`: smooth extend to apply if `smooth`=true
         - `zzupthres`, `zzdownthres`: up/down threshold of zigzag indicator
-        - `trend_col_name`:  source of uptrend signal, 'zz': zigzag indicator, 'signal': MACD signal
+        - `trend_col_name`:  source of uptrend signal, e.g. "slope signal" to use MACD Signal as trend
         - `bp_filters`: set class `BuyptFilter` to use
         - `extra_text_box`: text to print on graph (left top corner)
-        - ma_short_list, ma_long_list: list of int, e.g. [3, 20], [9]
-        - plot_ma: list of string, e.g. ma9, ema12
-        - `graph_showOption`: 'save', 'show', 'no'
-        - `graph_dir`: dir to save graph
-        - `figsize`: figure size of graph 
-        - recommend: 1-3 months: figsize=(36,16)
-        - `annotfont`: font size of annotation of peak bottom 
-        - recommend: 4-6
-
- 
+        - ma_short_list, ma_long_list: list of int, e.g. [3, 20], [9]  |  plot_ma: list of string, e.g. ma9, ema12 |
+        - `graph_showOption`: 'save', 'show', 'no' |    `graph_dir`: dir to save graph 
+        - `figsize`: figure size of graph | recommend: 1-3 months: figsize=(36,16)
+        - `annotfont`: font size of annotation of peak bottom | recommend: 4-6
+        - `figdpi`: dpi of graph
+        - `csv_dir`: directory to save csv file of stock data and backtest result
     
         """
         plot_ma_num=[]
@@ -1436,7 +1532,7 @@ class StockAnalyser():
         self.set_zigizag_trend(self.stock_data['close'], upthres=zzupthres, downthres=zzdownthres)
         
 
-        self.__add_col_macd_group(self.close_price)
+        self.__add_col_macd_group()
         
 
         self.__set_breakpoint( trend_col_name=trend_col_name,
