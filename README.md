@@ -161,22 +161,22 @@ python backtest.py -j=./configs/backtest_config_example.json
 
 | param | description |  data type|example| required|
 | ------ | ------ |------ |------ |------ |
-|ticker|     stock ticker   |  str<br>*or*<br>list of str |'PDD'<br>['PDD', 'TSLA', 'VRTX'] |yes|
-|  start      |    test start date    |  str (yyyy-mm-dd) | '2023-01-01' |yes|
-|  end      |    test end date    |  str (yyyy-mm-dd) | '2023-08-01' |yes|
+|ticker|     stock ticker   |  str<br>*or*<br>list of str |"PDD"<br>["PDD", "TSLA", "VRTX"] |yes|
+|  start      |    test start date    |  str (yyyy-mm-dd) | "2023-01-01" |yes|
+|  end      |    test end date    |  str (yyyy-mm-dd) | "2023-08-01" |yes|
 |  capital      |    initial capital for backtest   |  int / float | 10000 |no<br>- if not set, set to default as 10000|
 |    ma short    |    short ma to use in MA_SHORT_ABOVE_LONG filter    |   list of int |[3]<br>[3,20]|no|
 |   ma long     |   long ma to use in MA_SHORT_ABOVE_LONG filter      |    list of int |[9]<br>[9,50]<br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> ==>all points where ma3> ma9 and ma20>ma50 will be set as buy points |no|
-|   plot ma     |     extra ma to plot on graph, but will not affect buy point     |  list of str<br>|['ma3', 'ema9']  |no|
+|   plot ma     |     extra ma to plot on graph, but will not affect buy point     |  list of str<br>|["ma3", "ema9"]  |no|
 |   buy point filters     |    filters to find buy point, buy point are set if all filter met    | list of str|  "IN_UPTREND"<br> "CONVERGING_DROP"<br> "RISING_PEAK"<br>"MA_SHORT_ABOVE_LONG"  |no <br> - if no filter set, no buy points will be found|
 |buy strategy | buy strategy, currently only support follow buy point filter |str | "FOLLOW_BUYPT_FILTER"<br>(the only option currently)  |no|
 | sell strategy| sell strategy |str| "DEFAULT"(currently set as trailing stop)<br>"TRAILING_STOP"<br>"HOLD_TIL_END"<br>"PROFIT_TARGET"<br>"FIXED_STOP_LOSS"<br>"TRAILING_AND_FIXED_SL"<br>"TRAIL_FIX_SL_AND_PROFTARGET" |no <br> - if no sell strategy, will hold until end|
 | stop loss percent| percentage of trail stop loss| float |0.05|no <br> if not set but sell strategy involved trail stop, set to default as 0.05|
 | fixed stop loss percent|percentage of fixed trail stop loss| float |0.03|**yes** if sell strategy involve fixed stop loss, else **no**|
 | profit target|  prfot target percentage|float |0.3<br>(means sell when price reach 130% of buy price)|**yes** if sell strategy involve profit target, else **no**|
-|graph show option | options of how to handle graph plotting| str |"save" - save to graph_dir<br>"show" - show by plt.show()<br>"no" - don't plot graph  |no<br> - if not set, default='no'|
-|graph dir |directory to save graph |str |"../../result"|no<br> - if not set, default='../../result'|
-| csv dir|directory to save csv |str |"../../result"|no<br> - if not set, default='../../result'|
+|graph show option | options of how to handle graph plotting| str |"save" - save to graph_dir<br>"show" - show by plt.show()<br>"no" - don"t plot graph  |no<br> - if not set, default="no"|
+|graph dir |directory to save graph |str |"../../result"|no<br> - if not set, default="../../result"|
+| csv dir|directory to save csv |str |"../../result"|no<br> - if not set, default="../../result"|
 |print all ac | if run list of stock, to print stock data and roll result of each stock or not  | bool|true|no<br> if not set, default=false|
 | figure size x | x-dimension size of graph  |int | suggested value<br>within 3 months: `20`<br>3 months up: `36` | no <br>if not set, default=36|
 | figure size y | y-dimension size of graph  |int | suggested value<br>within 3 months: `10`<br>3 months up: `16` | no<br>if not set, default=16|
