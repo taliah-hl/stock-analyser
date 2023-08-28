@@ -1296,7 +1296,7 @@ class StockAnalyser():
            ma_short_list: list=[], ma_long_list=[],
            plot_ma: list=[],
            extra_text_box:str='',
-           graph_showOption: str='show', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
+           graph_showOption: str='show', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6, figdpi:int=200,
            print_stock_data: bool=True,
            csv_dir: str=None) ->pd.DataFrame:
 
@@ -1471,7 +1471,7 @@ class StockAnalyser():
                             to_plot_bp=True, to_plot_zz=True, to_shade_updown=True,
                             plt_title=f"{tickers} {method}{T_str}", annot=True, 
                             text_box=f"{tickers}, {start} - {end}\n{extra_text_box}", 
-                            figsize=figsize,
+                            figsize=figsize,figdpi=figdpi,
                             annotfont=annotfont, showOption=graph_showOption, savedir=graph_dir)
             #self.plot_zigzag(plt_title=f"{tickers} Zigzag Indicator", text_box=f"{tickers}, {start} - {end}, zigzag={zzupthres*100}%, {zzdownthres*100}%")
             
@@ -1529,7 +1529,7 @@ def default_analyser_runner(tickers: str, start: str, end: str,
             plot_ma: list=[],
             trend_col_name: str='slope signal',
            extra_text_box:str='',
-           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6,
+           graph_showOption: str='show', graph_dir: str='../../untitled.png', figsize: tuple=(30,30), annotfont: float=6, figdpi: int=200,
            csv_dir: str=None):
     stock = StockAnalyser()
     if extra_text_box =='':
@@ -1548,6 +1548,7 @@ def default_analyser_runner(tickers: str, start: str, end: str,
                         graph_showOption=graph_showOption,
                         graph_dir=graph_dir,
                         figsize=figsize,annotfont=annotfont,
+                        figdpi=figdpi,
                         csv_dir=csv_dir
     )           
 
@@ -1680,7 +1681,7 @@ if __name__ == "__main__":
                         bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.MA_SHORT_ABOVE_LONG},
                         figsize=graph_figsize, annotfont=4,
                         graph_dir=f'{graph_file_dir}_{item}.png',
-                        graph_showOption=graph_show_opt,
+                        graph_showOption=graph_show_opt, figdpi=graph_dpi,
                         csv_dir=csv_dir
                             )
                 logger.info(f"{item} analyse done")
@@ -1709,6 +1710,7 @@ if __name__ == "__main__":
                 graph_dir=graph_file_dir,
                 extra_text_box='',
                  graph_showOption=graph_show_opt,
+                 figdpi=graph_dpi,
                  csv_dir=csv_dir )
             logger.info(f"{item} analyse done")
         
@@ -1736,7 +1738,7 @@ if __name__ == "__main__":
                 bp_filters={ BuyptFilter.CONVERGING_DROP,BuyptFilter.RISING_PEAK, },
                 figsize=graph_figsize, annotfont=3,
                 graph_dir=graph_file_dir,
-                graph_showOption=graph_show_opt,
+                graph_showOption=graph_show_opt, figdpi=graph_dpi,
                 csv_dir=csv_dir )
     
 

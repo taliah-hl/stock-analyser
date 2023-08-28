@@ -190,6 +190,7 @@ class BackTest():
                     graph_showOption: str='save', 
                     graph_dir: str=None, 
                     figsize: tuple=(36,24), 
+                    figdpi: int=200,
                     annotfont: float=4,
                     csv_dir: str=None, to_print_stock_data: bool=True 
                   )->sa.StockAnalyser:
@@ -200,7 +201,10 @@ class BackTest():
         if not bp_filters:
             bp_filters = self.bp_filters
 
-
+        if extra_text_box =='':
+            extra_text_box = 'filters of buy point: '
+            for item in self.bp_filters:
+                extra_text_box+= f'{item.name}, '
         if self.buy_strategy == BuyStrategy.FOLLOW_BUYPT_FILTER:
 
             self._stock_table = stock.default_analyser(
@@ -213,7 +217,7 @@ class BackTest():
                 extra_text_box=extra_text_box,
                 graph_showOption=graph_showOption,
                 graph_dir=graph_dir, 
-                figsize=figsize, annotfont=annotfont,
+                figsize=figsize, annotfont=annotfont, figdpi=figdpi,
                 csv_dir=csv_dir, print_stock_data=to_print_stock_data 
             )
             return stock
@@ -308,6 +312,7 @@ class BackTest():
            plot_ma: list=[],
            extra_text_box:str='',
            graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
+           figdpi: int=200,
            csv_dir: str=None, to_print_stock_data: bool=True )->pd.DataFrame:
 
         try:
@@ -320,7 +325,7 @@ class BackTest():
                                    plot_ma=plot_ma,
                                    extra_text_box=extra_text_box,
                                    graph_showOption=graph_showOption, graph_dir=graph_dir,
-                                   figsize=figsize, annotfont=annotfont, 
+                                   figsize=figsize, annotfont=annotfont, figdpi=figdpi,
                                    csv_dir=csv_dir, to_print_stock_data=to_print_stock_data
                                    )
         except Exception as err:
@@ -522,6 +527,7 @@ def runner(tickers, start:str, end:str, capital:float,
            ma_short_list: list=[], ma_long_list=[],
            plot_ma: list=[],
            graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=4,
+           figdpi: int=200,
            csv_dir:str='../../', print_all_ac:bool=True)->float:
     """
     return 
@@ -543,7 +549,7 @@ def runner(tickers, start:str, end:str, capital:float,
                                 ma_short_list=ma_short_list, ma_long_list=ma_long_list,
                                 plot_ma=plot_ma,
                                 graph_showOption=graph_showOption,
-                                graph_dir=graph_dir, figsize=figsize, annotfont=annotfont,
+                                graph_dir=graph_dir, figsize=figsize, annotfont=annotfont, figdpi=figdpi,
                                 csv_dir=csv_dir
 
                                   )
@@ -817,6 +823,9 @@ if __name__ == "__main__":
         csv_dir = confjson.get("csv dir", '../../result')
         print_all_ac =confjson.get("print all ac", False)
         annotfont = confjson.get("graph font size", 4)
+        figdpi = confjson.get("graph dpi", 200)
+        figsize_x = confjson.get("figure size x", 36)
+        figsize_y = confjson.get("figure size y", 16)
         
         print(type(stockticker))
 
@@ -844,6 +853,7 @@ if __name__ == "__main__":
         for data in BuyStrategy:
             if data.name == buy_strategy_str:
                 buy_strategy = data
+        figsize=(figsize_x, figsize_y)
 
         logger.debug("config received from config file json:")
         logger.debug(confjson)
@@ -861,6 +871,7 @@ if __name__ == "__main__":
                 graph_showOption=graph_show_opt,
                 graph_dir=graph_file_dir,
                 print_all_ac=print_all_ac, csv_dir=csv_dir,
+                figsize=figsize, figdpi = figdpi,
                 annotfont=annotfont)
 
 
