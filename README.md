@@ -387,9 +387,9 @@ Parameter of `StockAnalyser.default_analyser`
 
 result of plotting extrema from different price source: 
 - `result_plot_extrema.pdf`
-- Example plot: `/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png`
+- Example plot: [/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
   - break point found by peak-bottom
-- batch of back test using different period and buy, sell condition is shown in `/example` folder and `exmaple_result.md`
+- batch of back test using different period and buy, sell condition is shown in [/example](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/example?ref_type=heads) folder and [exmaple_result.md](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/example_result.md)
 
 ##  11. <a name='TechniquesStudied'></a>Techniques Studied
 ###  11.1. <a name='Stockpricesmoothingtechnique'></a>Stock price smoothing technique
