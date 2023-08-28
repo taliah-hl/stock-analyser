@@ -23,5 +23,6 @@
   "print all ac": false,
   "figure size x": 36,
   "figure size y": 16,
-  "graph dpi": 100
+  "graph dpi": 100,
+  "graph font size": 4
 }
