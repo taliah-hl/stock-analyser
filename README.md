@@ -174,7 +174,7 @@ python backtest.py -j=./configs/backtest_config_example.json
 | stop loss percent| percentage of trail stop loss| float |0.05|no <br> if not set but sell strategy involved trail stop, set to default as 0.05|
 | fixed stop loss percent|percentage of fixed trail stop loss| float |0.03|**yes** if sell strategy involve fixed stop loss, else **no**|
 | profit target|  prfot target percentage|float |0.3<br>(means sell when price reach 130% of buy price)|**yes** if sell strategy involve profit target, else **no**|
-|graph show option | options of how to handle graph plotting| str |"save"<br>"show"<br>"no" |no<br> - if not set, default='no'|
+|graph show option | options of how to handle graph plotting| str |"save" - save to graph_dir<br>"show" - show by plt.show()<br>"no" - don't plot graph  |no<br> - if not set, default='no'|
 |graph dir |directory to save graph |str |"../../result"|no<br> - if not set, default='../../result'|
 | csv dir|directory to save csv |str |"../../result"|no<br> - if not set, default='../../result'|
 |print all ac | if run list of stock, to print stock data and roll result of each stock or not  | bool|true|no<br> if not set, default=false
@@ -205,8 +205,8 @@ look for arguments in command line
 | `-j` `--configfile`| config file (.json)|./config.json|
 |`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
 | `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
-| --figsize| figure size of graph ||
-|`-o` `--showopt` | graph show option |"save"<br>"show"<br>"no"   |
+| `--figsize` | figure size of graph ||
+|`-o` `--showopt` | graph show option |"save" - save to graph_dir<br>"show" - show by plot.show()<br>"no" - don't plot graph   |
 
 ###  4.6. <a name='Importclass'></a>Import class
 
@@ -217,6 +217,7 @@ look for arguments in command line
 ###  5.1. <a name='defaultfileoutputdirandfilename'></a>default file output dir and file name
 
 - ../../result/`stock ticker`_ `start date`_ `end date`.csv
+- sample file in [/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 - data type: pd.DataFrame
 - columns:
 
@@ -245,7 +246,9 @@ look for arguments in command line
 ###  6.1. <a name='defaultfileoutputdirandfilename-1'></a>default file output dir and file name
 
 - ../../result/roll_result_`stock ticker`_ `start date`_ `end date`.csv
+- sample file in [/exmaple/roll_result_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 - if list of stock is run, will produce a csv file record revenue of each stock in ../../result/all_revenue.csv
+- sample file of [all_revenue](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/all_revenue_top50_SP500_period1_MACD_condition11.csv?ref_type=heads)
 - data type: pd.DataFrame
 - columns:
 
@@ -255,7 +258,7 @@ look for arguments in command line
 |cash|amount of cash  |
 |close price |close price of the considered stock on that day |
 |MV | market value of holding on that day <br>calculated by close price|
-|action | action taken on that day <br> (only the last action taken will show up, in current setting only one action will be taken each day, see [Buy Sell Logic] S ection for detail)  <br>example<br>Action.BUY<br>Action.SELL|
+|action | action taken on that day <br> (only the last action taken will show up, in current setting only one action will be taken each day, see [Buy Sell Logic](#BuySellLogic) Section for detail)  <br>example<br>Action.BUY<br>Action.SELL|
 |deal price |deal price of buy / sell stock |
 |txn amt |transaction amount<br> =number of share in transaction * deal price |
 |total asset | =cash + market value of holding|
