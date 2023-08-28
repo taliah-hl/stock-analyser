@@ -504,7 +504,7 @@ class BackTest():
             if is_holding:
                 latest_high = max(latest_high, txn_table['close price'][idx])
                 txn_table.iloc[idx, lh_col] = latest_high
-                (txn_table.iloc[idx], is_sold) = self.check_sell(strategy=self.sell_strategy, prev_row=txn_table.iloc[idx-1].to_dict(), cur_row=txn_table.iloc[idx].to_dict(),
+                (txn_table.iloc[idx], is_sold) = self.check_sell(prev_row=txn_table.iloc[idx-1].to_dict(), cur_row=txn_table.iloc[idx].to_dict(),
                                         latest_high=latest_high, cur_price=txn_table['close price'][idx], last_buy_date=last_buy_date)
                 is_holding = not is_sold
                 if is_sold:
