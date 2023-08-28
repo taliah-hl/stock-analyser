@@ -1,4 +1,5 @@
 from stock_analyser import StockAnalyser
+from stock_analyser import BuyptFilter
 import pandas as pd
 import numpy as np
 import pytest
@@ -34,15 +35,15 @@ def test_runner_close(stock_list1):
     stock = StockAnalyser()
     result=stock.default_analyser(tickers=item, start='2023-01-01', end='2023-08-01',
                            method='close', 
-                           bp_trend_src='zz',
-                           graph_showOption='save', graph_dir='../../test1_result')
+                           trend_col_name='zigzag',
+                           graph_showOption='save', graph_dir='../../unit_test_result')
 
     assert isinstance(result, pd.DataFrame)
     assert len(result) >1
     assert 'close' in result
     assert 'type' in result
     assert 'zigzag' in result
-    assert 'bp' in result
+    assert 'buy pt' in result
     assert 'day of interest' in result
     assert result['close'].dtypes==np.float64 or result['close'].dtypes==np.int64
     assert result['type'].dtypes==np.float64
@@ -61,15 +62,14 @@ def test_runner_ema9(stock_list1):
     result=stock.default_analyser(tickers=item, start='2023-01-01', end='2023-08-01',
                             method='ema', T=9,
                             window_size=5,
-                            bp_trend_src='signal',
-                               graph_showOption='save', graph_dir='../../test2_result'   )
+                               graph_showOption='save', graph_dir='../../unit_test_result'   )
     
     assert isinstance(result, pd.DataFrame)
     assert len(result) >1
     assert 'close' in result
     assert 'type' in result
     assert 'zigzag' in result
-    assert 'bp' in result
+    assert 'buy pt' in result
     assert 'day of interest' in result
     assert result['close'].dtypes==np.float64 or result['close'].dtypes==np.int64
     assert result['type'].dtypes==np.float64
@@ -88,15 +88,14 @@ def test_runner_ma5(stock_list1):
     result=stock.default_analyser(tickers=item, start='2023-01-01', end='2023-08-01',
                             method='ma', T=5,
                             window_size=5,
-                            bp_trend_src='signal',
-                               graph_showOption='save', graph_dir='../../test3_result'   )
+                               graph_showOption='save', graph_dir='../../unit_test_result'   )
     
     assert isinstance(result, pd.DataFrame)
     assert len(result) >1
     assert 'close' in result
     assert 'type' in result
     assert 'zigzag' in result
-    assert 'bp' in result
+    assert 'buy pt' in result
     assert 'day of interest' in result
     assert result['close'].dtypes==np.float64 or result['close'].dtypes==np.int64
     assert result['type'].dtypes==np.float64
@@ -115,15 +114,14 @@ def test_runner_close_macd(stock_list1):
     result=stock.default_analyser(tickers=item, start='2023-05-01', end='2023-08-01',
                             method='close',
                             window_size=5,
-                            bp_trend_src='signal',
-                               graph_showOption='save', graph_dir='../../test4_result'   )
+                               graph_showOption='save', graph_dir='../../unit_test_result'   )
     
     assert isinstance(result, pd.DataFrame)
     assert len(result) >1
     assert 'close' in result
     assert 'type' in result
     assert 'zigzag' in result
-    assert 'bp' in result
+    assert 'buy pt' in result
     assert 'day of interest' in result
     assert result['close'].dtypes==np.float64 or result['close'].dtypes==np.int64
     assert result['type'].dtypes==np.float64
@@ -133,23 +131,48 @@ def test_runner_close_macd(stock_list1):
 
     return
 
+def test_many_param(stock_list1):
+    set_logger()
+    item=stock_list1[random.randint(0, len(stock_list1)-1)]
+    stock = StockAnalyser()
+    result=stock.default_analyser(tickers=item, start='2023-05-01', end='2023-08-01',
+                            method='ema', T=1, 
+                            window_size=5,smooth_ext=9,  smooth=True, zzupthres=0.08,
+                            zzdownthres=0.08, trend_col_name='zigzag', 
+                            bp_filters={BuyptFilter.IN_UPTREND, BuyptFilter.CONVERGING_DROP, BuyptFilter.MA_SHORT_ABOVE_LONG, BuyptFilter.RISING_PEAK},
+                            ma_short_list=[3, 20, 100], ma_long_list=[9, 50, 200], plot_ma=['ma3', 'ema20'],
+                            print_stock_data=True, csv_dir='../../unit_test_result',
+                               graph_showOption='save', graph_dir='../../unit_test_result/'   )
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) >1
+    assert 'close' in result
+    assert 'type' in result
+    assert 'zigzag' in result
+    assert 'buy pt' in result
+    assert 'day of interest' in result
+    assert result['close'].dtypes==np.float64 or result['close'].dtypes==np.int64
+    assert result['type'].dtypes==np.float64
+    assert result['zigzag'].dtypes==np.int64
+    assert isinstance(stock.extrema, pd.DataFrame)
+
 def test_runner_3yr(stock_list1):
     set_logger()
+    
+    
 
     item=stock_list1[random.randint(0, len(stock_list1)-1)]
     print(f"testing stock: {item}")
     stock = StockAnalyser()
     result=stock.default_analyser(tickers=item, start='2020-08-01', end='2023-08-01',
                             method='close',
-                            bp_trend_src='signal',
-                               graph_showOption='save', graph_dir='../../test5_result'   )
+                               graph_showOption='save', graph_dir='../../unit_test_result/'   )
     
     assert isinstance(result, pd.DataFrame)
     assert len(result) >1
     assert 'close' in result
     assert 'type' in result
     assert 'zigzag' in result
-    assert 'bp' in result
+    assert 'buy pt' in result
     assert 'day of interest' in result
     assert result['close'].dtypes==np.float64 or result['close'].dtypes==np.int64
     assert result['type'].dtypes==np.float64
