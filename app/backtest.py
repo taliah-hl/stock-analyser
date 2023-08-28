@@ -85,7 +85,14 @@ class StockAccount():
         logger.info(f"csv saved to {save_path_norepeat}")
 
         
-    def cal_revenue(self):
+    def cal_revenue(self)->float:
+        """
+        set function of self.revenue
+        return 
+        ---
+        revenue of the transaction (self.txn) in the StockAccount over the whole backtest
+
+        """
         if self.txn is not None:
             self.revenue = (self.txn['cash'][-1] - self.initial_capital)/self.initial_capital
             return self.revenue
@@ -93,7 +100,12 @@ class StockAccount():
             logger.warning("no transaction, cannot get revenue, you may want to roll the ACC first.")
             return None
 
-    def get_revenue(self):
+    def get_revenue(self)->float:
+        """
+         return 
+        ---
+        revenue over the whole period (self.txn) in this StockAccount
+        """
         if self.revenue is not None:
             return self.revenue
         elif (self.revenue is None) and (self.txn is not None):
@@ -103,7 +115,12 @@ class StockAccount():
             logger.warning("no transaction, cannot get revenue, you may want to roll the ACC first.")
             return None
 
-    def cal_final_capital(self):
+    def cal_final_capital(self)->float:
+        """
+        return
+        ---
+        final capital over the whole period in this StockAccount
+        """
         if self.txn is not None:
             return self.txn['cash'][-1]
         else:
@@ -114,6 +131,10 @@ class StockAccount():
         """
         calculate revenue of buying at first day and selling at last day as control group
         set function of self.revenue_buy_and_hold
+
+        return
+        ---
+        revenue over the whole period in this StockAccount if buy on first day and sell on last day
         """
         if self.txn is not None:
             buy_share = math.floor(self.initial_capital/ self.txn['close price'][0])
@@ -131,29 +152,34 @@ class StockAccount():
 class BackTest():
 
     def __init__(self):
-        pass
         self.buy_strategy: BuyStrategy=BuyStrategy.FOLLOW_BUYPT_FILTER
         self.sell_strategy: SellStrategy=SellStrategy.TRAILING_STOP 
-        self.sell_signal: str=''
-        self.sell_signal: str=''
+        self.sell_signal: str=''    # for future use
+        self.sell_signal: str=''    # for future use
         self.stock_table=None
         self.trail_loss_percent: float=None
         self.fixed_st: float=None
         self.profit_target: float=None
-        #self.stock: str=''
-        #self.account: StockAccount
         self.position_size: float=1     # portion of capital to use in each buy action
         self.start: str=''
         self.end: str=''
-        self.buyDates: list     # list of str (date)
-        self.sellDates: list     # list of str (date)
-        self.actionDates: dict  # dict of list of str (date)
+        self.buyDates: list     # list of str (date)    # no set function yet
+        self.sellDates: list     # list of str (date)   # no set function yet
+        self.actionDates: dict  # dict of list of str (date)       # no set function yet
         self.profit_target=float('inf')
         self.bp_filters=set()
         self.trade_tmie_of_ac: int=0
 
 
-    def set_buy_strategy(self, strategy=None, buypt_filters: set=set()):
+    def set_buy_strategy(self, strategy: BuyStrategy=None, buypt_filters: set=set())->None:
+        """
+        - set buy strategy of the backtest
+
+        parameter
+        ---
+        - `strategy`: buy strategy defined in class `BuyStrategy`
+        - `buypt_filters`: set of `StockAnalyser.BuyptFilter` to applied (all applied with and operation)
+        """
         if strategy is not None:
             self.buy_strategy = strategy
 
@@ -161,7 +187,18 @@ class BackTest():
 
 
     def set_sell_strategy(self, strategy, ts_percent: float=None, 
-                          profit_target: float=None, fixed_sl: float=None):
+                          profit_target: float=None, fixed_sl: float=None)->None:
+        """
+         - set sell strategy of the backtest
+
+        parameter
+        ---
+        - `strategy`: sell strategy defined in class `SellStrategy`
+        - `ts_percent`: trailing stop-loss percentage
+        - `fixed_sl`: stop-loss percentage (in this project fixed stop loss means set stop-loss price fixed at the buy price)
+        - `profit_target`: profit target percentage
+        see more for stop-loss vs trailing stop-loss : https://www.investopedia.com/articles/trading/08/trailing-stop-loss.asp
+        """
         self.sell_strategy = strategy
         if self.sell_strategy == SellStrategy.DEFAULT:
             self.sell_strategy = SellStrategy.TRAILING_STOP
@@ -174,9 +211,15 @@ class BackTest():
 
 
     def set_buy_signal(self):
+        """
+        TO BE DEVELOPPED
+        """
         pass
 
     def set_sell_signal(self):
+        """
+        TO BE DEVELOPPED
+        """
         pass
 
     def set_stock(self, ticker: str, start: str, end: str, 
@@ -195,7 +238,26 @@ class BackTest():
                     csv_dir: str=None, to_print_stock_data: bool=True 
                   )->sa.StockAnalyser:
         """
-            init stock using StockAnalyser.default_analyser
+            init StockAnalyser object using StockAnalyser.default_analyser
+
+            return
+            ----
+            StockAnalyser object that contain stock data
+
+            Parameter
+            ----
+            - `ticker`: stock ticker | `start`: start date of backtest, `end`: end date of backtest |
+            - `peak_btm_src`: price source to calculate extrema, options: 'ma', 'ema', 'dma', 'butter', 'close'|
+            - `T`: period of moving average if method set to 'ma', 'ema' or any kind with period required (no effect if method set to 'close')
+            - `trend_col_name`:  source of uptrend signal, e.g. "slope signal" to use MACD Signal as trend
+            - `bp_filters`: set class `BuyptFilter` to use
+            - `extra_text_box`: text to print on graph (left top corner)
+            - ma_short_list, ma_long_list: list of int, e.g. [3, 20], [9]  |  plot_ma: list of string, e.g. ma9, ema12 |
+            - `graph_showOption`: 'save', 'show', 'no' |    `graph_dir`: dir to save graph 
+            - `figsize`: figure size of graph | recommend: 1-3 months: figsize=(36,16)
+            - `annotfont`: font size of annotation of peak bottom | recommend: 4-6
+            - `figdpi`: dpi of graph
+            - `csv_dir`: directory to save csv file of stock data and backtest result
         """
         stock = sa.StockAnalyser()
         if not bp_filters:
@@ -224,13 +286,23 @@ class BackTest():
         else:
             
             logger.warning(f"buy strategy receive: {self.buy_strategy}, which is not configurated, program exit.")
-            exit(0)
+            exit(1)
 
     def sell(self, prev_row: dict, cur_row: dict, trigger_price: float, portion: float=1, last_buy_date=None, trigger: str=None)->dict:
         """
-        - portion: portion of holding to sell
+
+
+
+        Parameter
+        ----
+        - `prev_row`: prev row of txn_table
+        - `cur_row`: current row of txn_table
+        - `trigger_price`: trigger price of sell i.e. at what price is the stock sold
+        - `portion`: portion of holding to sell
+        - `trigger`: trigger reason
 
         return 
+        ----
 
         updated row after sell
         """
@@ -247,8 +319,14 @@ class BackTest():
     
     def buy(self, prev_row, cur_row: dict, share: int)->dict:
         """
-            input: prev row
+            Parameter
+            ----
+            - `prev_row`: prev row of txn_table
+            - `cur_row`: current row of txn_table
+            - `share`: number of share to buy
+
             return 
+            ----
 
             updated row after buy
         """
@@ -264,10 +342,21 @@ class BackTest():
         
 
         
-    def check_sell(self, strategy, prev_row: dict, cur_row: dict, latest_high: float, cur_price: float, last_buy_date=None):
+    def check_sell(self, prev_row: dict, cur_row: dict, latest_high: float, cur_price: float, last_buy_date: int=None)->tuple:
         """
-            input: prev row
-            return: cur row, bool: True=sold, False=not sold
+
+        Return
+        ---
+
+        (dict, bool): (updated row after check sell, sold or not sold)
+
+        Parameter
+        ----
+        - `prev_row`: prev row of txn_table
+        - `cur_row`: current row of txn_table
+        - `latest_high`: high price after previous buy
+        - `cur_price`: current stock price
+        - `index` in txn_table of last_buy_date
         """
 
         
@@ -314,6 +403,30 @@ class BackTest():
            graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=6,
            figdpi: int=200,
            csv_dir: str=None, to_print_stock_data: bool=True )->pd.DataFrame:
+        
+        """
+        - conduct roll over to conduct back tes
+        
+        return 
+        ---
+        transaction table of the backtest (pd.DataFrame)
+        -  contain backtest details incl. 'close price', 'share', 'cahs', 'MV' etc.
+
+        Parameter
+        ----
+
+        - `trend_col_name`:  source of uptrend signal, e.g. "slope signal" to use MACD Signal as trend
+        - `bp_filters`: set class `BuyptFilter` to use
+        - `extra_text_box`: text to print on graph (left top corner)
+        - `ma_short_list`, `ma_long_list`: list of int, e.g. [3, 20], [9]  |  
+        - `plot_ma`: list of string, e.g. ma9, ema12 |
+        - `graph_showOption`: 'save', 'show', 'no' |    `graph_dir`: dir to save graph 
+        - `figsize`: figure size of graph | recommend: 1-3 months: figsize=(36,16)
+        - `annotfont`: font size of annotation of peak bottom | recommend: 4-6
+        - `figdpi`: dpi of graph
+        - `csv_dir`: directory to save csv file of stock data and backtest result
+        - `to_print_stock_data`: to print stock_data from StockAnalyser to csv or not 
+        """
 
         try:
             if not bp_filters:
@@ -466,12 +579,21 @@ class BackTest():
 
         return txn_table
         
-    def print_revenue(self, ac_list:list, total_revenue, average_rev_buy_hold: float, save_path:str=None, textbox: str=None):
+    def print_revenue(self, ac_list:list, total_revenue: float, average_rev_buy_hold: float, save_path:str=None, textbox: str=None):
         """
-        input: list of acc
-        all accs need to be roll first
-        time range of all acc need to be same
-        print revenue to csv file
+        - print revenue of list of StockAccount to one csv file
+        - all accs need to be roll first
+        - period of backtest of all acc need to be the same
+        
+        Parameter
+        ---
+        
+        - `ac_list`: list of `StockAccount`
+        - info to print in csv: 
+        - `total_revenue`: total revenue of all account, `average_rev_buy_hold`:  average revenue if buy and hold for all account
+        - `save_path`: dir to save csv
+        - `textbox`: extra text to print at the end of the csv
+        
 
         """
         if save_path is None:
@@ -522,8 +644,8 @@ class BackTest():
 def runner(tickers, start:str, end:str, capital:float, 
            sell_strategy, ts_percent: float=None, fixed_sl: float=None, profit_target:  float=None,
            buy_strategy=BuyStrategy.FOLLOW_BUYPT_FILTER,
-           trend_col_name: str='slope signal',
            bp_filters: set=set(),
+           trend_col_name: str='slope signal',
            ma_short_list: list=[], ma_long_list=[],
            plot_ma: list=[],
            graph_showOption: str='save', graph_dir: str=None, figsize: tuple=(36,24), annotfont: float=4,
@@ -531,8 +653,28 @@ def runner(tickers, start:str, end:str, capital:float,
            csv_dir:str='../../', print_all_ac:bool=True)->float:
     """
     return 
+    ---
+    final revenue of the whole run
 
-    overall revenue
+     Parameter
+    ----
+    - `tickers`: stock ticker (str) or list of stock ticker (list of str)
+    -  `start`: start date of backtest, `end`: end date of backtest |
+    - `capital`: initial capital of backtest
+    - `sell_strategy`: buy strategy defined in class `BuyStrategy`
+    - `ts_percent`: trailing stop-loss percentage
+    - `fixed_sl`: stop-loss percentage (in this project fixed stop loss means set stop-loss price fixed at the buy price)
+    - `profit_target`: profit target percentage
+    - `buy_strategy`: buy strategy defined in class `BuyStrategy`
+    - `bp_filters`: set of `StockAnalyser.BuyptFilter` to applied (all applied with and operation)
+    - `trend_col_name`:  source of uptrend signal, e.g. "slope signal" to use MACD Signal as trend
+    - `ma_short_list`, `ma_long_list`: list of int, e.g. [3, 20], [9]  |  `plot_ma`: list of string, e.g. ma9, ema12 |
+    - `graph_showOption`: 'save', 'show', 'no' |    `graph_dir`: dir to save graph 
+    - `figsize`: figure size of graph | recommend: 1-3 months: figsize=(36,16)
+    - `annotfont`: font size of annotation of peak bottom | recommend: 4-6
+    - `figdpi`: dpi of graph
+    - `csv_dir`: directory to save csv file of stock data and backtest result
+    - `print_all_ac`:to print roll result and stock data of each account or not if runnng list of stock
     """
 
     if isinstance(tickers, str):
@@ -623,7 +765,7 @@ def runner(tickers, start:str, end:str, capital:float,
         back_test.print_revenue(acc_list, final_rev, avg_rev_bh, save_path=csv_dir, textbox=f'trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}')
         return final_rev
 
-def yearly_test():
+def yearly_test():  # test for temporary use
     
     #stock_lst_file='../../hotstock100.txt'
     res_save_dir='../../back_test_result/yearly_trail5%_100result.csv'
@@ -697,7 +839,7 @@ if __name__ == "__main__":
     )
     logger.info("-- ****  NEW RUN START **** --")
 
-
+    # for easy testing list of stock
     watch_list = ['amd', 'sofi', 'intc', 'nio', 
                   'nvda', 'pdd', 'pltr', 'roku',
                   'snap', 'tsla', 'uber', 'vrtx',

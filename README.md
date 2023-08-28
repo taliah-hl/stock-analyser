@@ -180,7 +180,7 @@ python backtest.py -j=./configs/backtest_config_example.json
 |print all ac | if run list of stock, to print stock data and roll result of each stock or not  | bool|true|no<br> if not set, default=false|
 | figure size x | x-dimension size of graph  |int | suggested value<br>within 3 months: `20`<br>3 months up: `36` | no <br>if not set, default=36|
 | figure size y | y-dimension size of graph  |int | suggested value<br>within 3 months: `10`<br>3 months up: `16` | no<br>if not set, default=16|
-| graph dpi | dpi of graph  |int | suggested value<br>within 3 months: `100`<br>3 months up: `200` | no|
+| graph dpi | dpi of graph  |int | suggested value<br>within 3 months: `100`<br>3 months up: `200` | no<br>if not set, default=200|
 |graph font size | font size of annotation of graph  |float | 4<br>suggested value<br>dpi 0-100: 8-10<br>dpi 100-200: 5-8<br>dpi 200+: 3-4 | no<br>if not set, default=4|
 
 **More config example:**
