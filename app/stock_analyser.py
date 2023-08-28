@@ -138,7 +138,7 @@ class StockAnalyser():
         csv_dir += f"/stock_data_{self.tickers}_{self.start}_{self.end}"
         save_path_norepeat = csv_dir
         while os.path.isfile(f'{save_path_norepeat}.csv'):
-            save_path_norepeat = csv_dir + f'({add_num})'
+            save_path_norepeat = csv_dir + f'_{add_num}'
             add_num +=1
 
         save_path_norepeat += '.csv'
@@ -1489,7 +1489,7 @@ class StockAnalyser():
                 add_num =1
                 dir_norepeat = graph_dir
                 while os.path.isfile(f'{dir_norepeat}.png'):
-                    dir_norepeat = graph_dir + f'({add_num})'
+                    dir_norepeat = graph_dir + f'_{add_num}'
                     add_num +=1
                 dir_norepeat += '.png'
                 plt.savefig(dir_norepeat)

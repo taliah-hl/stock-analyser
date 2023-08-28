@@ -66,7 +66,7 @@ class StockAccount():
         save_path += f"/roll_result_{self.ticker}_{self.start}_{self.end}"
         save_path_norepeat = save_path
         while os.path.isfile(f'{save_path_norepeat}.csv'):
-            save_path_norepeat = save_path + f'({add_num})'
+            save_path_norepeat = save_path + f'_{add_num}'
             add_num +=1
 
         save_path_norepeat += '.csv'
@@ -478,7 +478,7 @@ class BackTest():
 
         save_path_norepeat = save_path
         while os.path.isfile(f'{save_path_norepeat}.csv'):
-            save_path_norepeat = save_path + f'({add_num})'
+            save_path_norepeat = save_path + f'_{add_num}'
             add_num +=1
 
         save_path_norepeat += '.csv'
