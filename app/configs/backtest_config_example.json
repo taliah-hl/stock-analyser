@@ -20,5 +20,8 @@
   "graph show option": "save",
   "graph dir": "../result",
   "csv dir": "../result",
-  "print all ac": false
+  "print all ac": false,
+  "figure size x": 36,
+  "figure size y": 16,
+  "graph dpi": 100
 }
