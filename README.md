@@ -7,8 +7,9 @@
 	* 4.2. [run by config in command line (.json)](#runbyconfigincommandline.json)
 	* 4.3. [Table of parameters in JSON config file](#TableofparametersinJSONconfigfile)
 	* 4.4. [Parameter parsing logic when run in command line](#Parameterparsinglogicwhenrunincommandline)
-	* 4.5. [arguments in command line of `backtest.py`](#argumentsincommandlineofbacktest.py)
-	* 4.6. [Import class](#Importclass)
+	* 4.5. [arguments in command line of `stock_analyser.py`](#argumentsincommandlineofstock_analyser.py)
+	* 4.6. [arguments in command line of `backtest.py`](#argumentsincommandlineofbacktest.py)
+	* 4.7. [Import class](#Importclass)
 * 5. [Columns in `StockAnalyser.stock_data`](#ColumnsinStockAnalyser.stock_data)
 	* 5.1. [default file output dir and file name](#defaultfileoutputdirandfilename)
 * 6. [Columns in `StockAccount.txn`](#ColumnsinStockAccount.txn)
@@ -21,7 +22,7 @@
 	* 9.3. [Parameter of StockAnalyser.default_analyser](#ParameterofStockAnalyser.default_analyser)
 * 10. [Example Result](#ExampleResult)
 	* 10.1. [example plot](#exampleplot)
-* 11. [Test](#Test)
+* 11. [Unit Test](#UnitTest)
 	* 11.1. [Test script](#Testscript)
 	* 11.2. [Pytest](#Pytest)
 * 12. [Techniques Studied](#TechniquesStudied)
@@ -204,7 +205,20 @@ look for `-j` `--configfile`
       V
 look for arguments in command line
 ```
-###  4.5. <a name='argumentsincommandlineofbacktest.py'></a>arguments in command line of `backtest.py`
+
+###  4.5. <a name='argumentsincommandlineofstock_analyser.py'></a>arguments in command line of `stock_analyser.py`
+
+|argument| description|example|
+|-----|-----|-----|
+|`-t` `--ticker` | stock ticker| PDD
+|`-s` `--start` | start date| 2023-01-01|
+| `-e` `--end` | end date|2023-08-01|
+| `-f` `stocklist_file`| stock list file (.txt)|./stock_list.txt|
+|`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
+| `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
+|`-o` `--showopt` | graph show option |"save" - save to graph_dir<br>"show" - show by plot.show()<br>"no" - don't plot graph   |
+
+###  4.6. <a name='argumentsincommandlineofbacktest.py'></a>arguments in command line of `backtest.py`
 
 |argument| description|example|
 |-----|-----|-----|
@@ -218,7 +232,7 @@ look for arguments in command line
 | `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
 |`-o` `--showopt` | graph show option |"save" - save to graph_dir<br>"show" - show by plot.show()<br>"no" - don't plot graph   |
 
-###  4.6. <a name='Importclass'></a>Import class
+###  4.7. <a name='Importclass'></a>Import class
 
 See demo files: 
 - [demo/demo_stock_analyser_backtest.ipynb](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/demo/demo_stock_analyser_backtest.ipynb)
@@ -410,7 +424,7 @@ result of plotting extrema from different price source:
 
 ![Alt text](example/TSLA_2023-03-01_2023-07-01.png)
 
-##  11. <a name='Test'></a>Unit Test
+##  11. <a name='UnitTest'></a>Unit Test
 
 ###  11.1. <a name='Testscript'></a>Test script
 the project contain a shell script that will test running `stock_analyser.py` and `backtest.py` on command line
