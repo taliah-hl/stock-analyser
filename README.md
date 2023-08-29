@@ -212,7 +212,7 @@ look for arguments in command line
 |`-s` `--start` | start date| 2023-01-01|
 | `-e` `--end` | end date|2023-08-01|
 | `-c` `--capital` | capital| 10000|
-| `-f` `stocklist_file`| stock list file (.txt)|./stock_list.txt|
+| `-f` `--stocklist_file`| stock list file (.txt)|./stock_list.txt|
 | `-j` `--configfile`| config file (.json)|./config.json|
 |`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
 | `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
