@@ -27,6 +27,8 @@ sdist/
 var/
 wheels/
 share/python-wheels/
+bin/
+*venv*
 *.egg-info/
 .installed.cfg
 *.egg
@@ -122,3 +124,4 @@ dmypy.json
 
 # vscode
 .vscode
+share/man/man1/ttx.1
