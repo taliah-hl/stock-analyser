@@ -105,13 +105,13 @@ go to app/stock_analyser.py
 - analyse one stock
 
 ```
-python stock_analyser.py -t=PDD -s=2022-08-01 -e=2023-08-01 -g=../graph_dir -v=./csv_dir
+python stock_analyser.py -t=PDD -s=2022-08-01 -e=2023-08-01 -g=../graph_dir -v=../csv_dir
 ```
 
 - analyse list of stock from txt file
 
 ```
-python stock_analyser.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-01 -g=../graph_dir -v=./csv_dir
+python stock_analyser.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-01 -g=../graph_dir -v=../csv_dir
 ```
 
 to run `back_test`
