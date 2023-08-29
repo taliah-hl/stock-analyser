@@ -1,7 +1,14 @@
 ## import modules
-
 import sys
-sys.path.append('/mnt/c/users/taliah/code/asiabots/stock/stock-peak-bottom')
+import os
+# adding root dir to sys.path
+cwd=os.getcwd()
+parent_wd = os.path.dirname(cwd)
+abs_parent_wd  = os.path.abspath(parent_wd)
+
+
+# Add the script's directory to PYTHONPATH
+sys.path.insert(0, abs_parent_wd)
 
 from loguru import logger
 import numpy as np

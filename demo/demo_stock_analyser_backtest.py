@@ -1,6 +1,12 @@
 # Demo py file for how to use StockAnalyser and Backtest
 import sys
-sys.path.append('/mnt/c/users/taliah/code/asiabots/stock/stock-peak-bottom')
+import os
+# adding root dir to sys.path
+cwd=os.getcwd()
+parent_wd = os.path.dirname(cwd)
+abs_parent_wd  = os.path.abspath(parent_wd)
+sys.path.insert(0, abs_parent_wd)
+
 
 from app import stock_analyser as sa
 from app import backtest as bt

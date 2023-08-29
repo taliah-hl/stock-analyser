@@ -7,6 +7,12 @@ import pytest
 import random
 from loguru import logger
 import sys
+import os
+# adding root dir to sys.path
+cwd=os.getcwd()
+parent_wd = os.path.dirname(cwd)
+abs_parent_wd  = os.path.abspath(parent_wd)
+sys.path.insert(0, abs_parent_wd)
 
 @pytest.fixture
 def stock_list1():

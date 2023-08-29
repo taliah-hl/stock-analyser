@@ -6,6 +6,12 @@ import pytest
 import random
 from loguru import logger
 import sys
+import os
+# adding root dir to sys.path
+cwd=os.getcwd()
+parent_wd = os.path.dirname(cwd)
+abs_parent_wd  = os.path.abspath(parent_wd)
+sys.path.insert(0, abs_parent_wd)
 
 
 @pytest.fixture
@@ -163,7 +169,7 @@ def test_runner_3yr(stock_list1):
     item=stock_list1[random.randint(0, len(stock_list1)-1)]
     print(f"testing stock: {item}")
     stock = StockAnalyser()
-    result=stock.default_analyser(tickers=item, start='2020-08-01', end='2023-08-01',
+    result=stock.default_analyser(tickers=item, start='2020-09-01', end='2023-08-01',
                             method='close',
                                graph_showOption='save', graph_dir='../../unit_test_result/'   )
     

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Run the first command
-
+export PYTHONPATH="$PWD"
 echo "Testing stock_analyser.py ..."
 echo "Running: python app/stock.py -t=pdd -s=2023-05-01 -e=2023-08-20 -g=../unit_test_result/ -v=../unit_test_result"
 python app/stock_analyser.py -t=pdd -s=2023-05-01 -e=2023-08-20 -g=../unit_test_result/ -v=../unit_test_result
