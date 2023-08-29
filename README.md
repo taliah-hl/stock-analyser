@@ -20,19 +20,23 @@
 	* 9.2. [Source of uptrend](#Sourceofuptrend)
 	* 9.3. [Parameter of StockAnalyser.default_analyser](#ParameterofStockAnalyser.default_analyser)
 * 10. [Example Result](#ExampleResult)
-* 11. [Techniques Studied](#TechniquesStudied)
-	* 11.1. [Stock price smoothing technique](#Stockpricesmoothingtechnique)
-* 12. [Bug to be solved:](#Bugtobesolved:)
-* 13. [2021 Version](#Version)
-* 14. [Peaks and Bottoms](#PeaksandBottoms)
-	* 14.1. [Example](#Example)
-	* 14.2. [Limitations Using Blackman Window](#LimitationsUsingBlackmanWindow)
-	* 14.3. [Limitations Using Polynomial Regression](#LimitationsUsingPolynomialRegression)
-* 15. [Trend](#Trend)
-	* 15.1. [Example](#Example-1)
-	* 15.2. [Limitations](#Limitations)
-* 16. [Smoothing the Data ("Noise" Reduction)](#SmoothingtheDataNoiseReduction)
-* 17. [Linear Regression](#LinearRegression)
+	* 10.1. [example plot](#exampleplot)
+* 11. [Test](#Test)
+	* 11.1. [Test script](#Testscript)
+	* 11.2. [Pytest](#Pytest)
+* 12. [Techniques Studied](#TechniquesStudied)
+	* 12.1. [Stock price smoothing technique](#Stockpricesmoothingtechnique)
+* 13. [Bug to be solved:](#Bugtobesolved:)
+* 14. [2021 Version](#Version)
+* 15. [Peaks and Bottoms](#PeaksandBottoms)
+	* 15.1. [Example](#Example)
+	* 15.2. [Limitations Using Blackman Window](#LimitationsUsingBlackmanWindow)
+	* 15.3. [Limitations Using Polynomial Regression](#LimitationsUsingPolynomialRegression)
+* 16. [Trend](#Trend)
+	* 16.1. [Example](#Example-1)
+	* 16.2. [Limitations](#Limitations)
+* 17. [Smoothing the Data ("Noise" Reduction)](#SmoothingtheDataNoiseReduction)
+* 18. [Linear Regression](#LinearRegression)
 
 <!-- vscode-markdown-toc-config
 	numbering=true
@@ -213,7 +217,9 @@ look for arguments in command line
 
 ###  4.6. <a name='Importclass'></a>Import class
 
-- see demo: [`app/stock_analyser_backtest_demo.ipynb`](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/app/stock_analyser_backtest_demo.ipynb?ref_type=heads)
+See demo files: 
+- [demo/demo_stock_analyser_backtest.ipynb](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/demo/demo_stock_analyser_backtest.ipynb)
+- [demo/demo_stock_analyser_backtest.py](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/demo/demo_stock_analyser_backtest.py)
   
 ##  5. <a name='ColumnsinStockAnalyser.stock_data'></a>Columns in `StockAnalyser.stock_data`
 
@@ -397,12 +403,34 @@ result of plotting extrema from different price source:
   - break point found by peak-bottom
 - batch of back test using different period and buy, sell condition is shown in [/example](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/example?ref_type=heads) folder and [exmaple_result.md](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/example_result.md)
 
-### example plot
+###  10.1. <a name='exampleplot'></a>example plot
 
 ![Alt text](example/TSLA_2023-03-01_2023-07-01.png)
 
-##  11. <a name='TechniquesStudied'></a>Techniques Studied
-###  11.1. <a name='Stockpricesmoothingtechnique'></a>Stock price smoothing technique
+##  11. <a name='Test'></a>Unit Test
+
+###  11.1. <a name='Testscript'></a>Test script
+the project contain a shell script that will test running `stock_analyser.py` and `backtest.py` on command line
+- cd to root dir
+```
+./test_script.sh
+```
+
+
+###  11.2. <a name='Pytest'></a>Pytest
+
+the project contain 2 test clients utilizing pytest for unit test
+
+just run this in command line to launch pytest
+```
+pytest
+```
+test clients:
+- tests/test_backtest.py
+- tests/test_stock_analyser.py
+
+##  12. <a name='TechniquesStudied'></a>Techniques Studied
+###  12.1. <a name='Stockpricesmoothingtechnique'></a>Stock price smoothing technique
 - Moving Averages (MA, EMA, DMA)
 - Butterworth Low Pass Filter
 - polyfit
@@ -411,10 +439,10 @@ result of plotting extrema from different price source:
 detail discussion of pros and cons of different techniques see `technique_and_theory.md`
 
 
-##  12. <a name='Bugtobesolved:'></a>Bug to be solved:
+##  13. <a name='Bugtobesolved:'></a>Bug to be solved:
 - ema (hence MACD) in early segment of stock data is not accurate, since ema is calculate base on yesturday's ema, so much earlier data before the specified start is required to get an accurate ema
 
-##  13. <a name='Version'></a>2021 Version
+##  14. <a name='Version'></a>2021 Version
 ---
 
 - [Stock](#stock)
@@ -457,7 +485,7 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 
 # Logic and Design
 
-##  14. <a name='PeaksandBottoms'></a>Peaks and Bottoms
+##  15. <a name='PeaksandBottoms'></a>Peaks and Bottoms
 
 ![](./docs/Screenshot%202021-08-16%20184841.png)
 
@@ -465,11 +493,11 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 - Find the approximate peaks and bottoms using the smoothed trend
 - Find the actual peaks and bottoms using the real data
 
-###  14.1. <a name='Example'></a>Example
+###  15.1. <a name='Example'></a>Example
 
 ![](./docs/NVDA%20Peaks%20and%20Bottoms.png)
 
-###  14.2. <a name='LimitationsUsingBlackmanWindow'></a>Limitations Using Blackman Window
+###  15.2. <a name='LimitationsUsingBlackmanWindow'></a>Limitations Using Blackman Window
 
 For a longer period of time, the value of `smooth_data_N` and `find_extrema_interval` has to change to other value.
 
@@ -485,7 +513,7 @@ Solution:
 
 ![](./docs/NVDA%20Peaks%20and%20Bottoms%203.png)
 
-###  14.3. <a name='LimitationsUsingPolynomialRegression'></a>Limitations Using Polynomial Regression
+###  15.3. <a name='LimitationsUsingPolynomialRegression'></a>Limitations Using Polynomial Regression
 
 The degree cannot be too large when there are a lot of data.
 
@@ -493,11 +521,11 @@ It might not work when the given period (number of record) is too large.
 
 ---
 
-##  15. <a name='Trend'></a>Trend
+##  16. <a name='Trend'></a>Trend
 
 - Use linear regression and plot a best-fit line.
 
-###  15.1. <a name='Example-1'></a>Example
+###  16.1. <a name='Example-1'></a>Example
 
 `stock_info = yf.download("^HSI", start="2000-01-01", end="2003-06-15")`
 
@@ -507,7 +535,7 @@ It might not work when the given period (number of record) is too large.
 
 ![NVDA Linear Regression](./docs/NVDA%20Linear%20Regression.png)
 
-###  15.2. <a name='Limitations'></a>Limitations
+###  16.2. <a name='Limitations'></a>Limitations
 
 The best-fit line might not be perfect.
 
@@ -523,7 +551,7 @@ The best-fit line might not be perfect.
 
 # Reference
 
-##  16. <a name='SmoothingtheDataNoiseReduction'></a>Smoothing the Data ("Noise" Reduction)
+##  17. <a name='SmoothingtheDataNoiseReduction'></a>Smoothing the Data ("Noise" Reduction)
 
 Current approach in smoothing the data (Blackman Window):
 
@@ -537,7 +565,7 @@ Another approach in smoothing the data:
 
 https://towardsdatascience.com/in-12-minutes-stocks-analysis-with-pandas-and-scikit-learn-a8d8a7b50ee7
 
-##  17. <a name='LinearRegression'></a>Linear Regression
+##  18. <a name='LinearRegression'></a>Linear Regression
 
 https://medium.com/analytics-vidhya/stock-prediction-using-linear-regression-cd1d8351f536
 
