@@ -139,7 +139,7 @@ python backtest.py -j=./configs/backtest_config_example.json
   "ticker": "pdd",
   "start": "2023-08-01",
   "end": "2023-08-20",
-  "captial": "10000",
+  "capital": 20000,
   "ma short": [3, 20],
   "ma long": [9, 50],
   "plot ma": ["ma3", "ema9", "ma15"],
@@ -155,11 +155,14 @@ python backtest.py -j=./configs/backtest_config_example.json
   "fixed stop loss percent": 0.03,
   "profit target": 0.3,
   "graph show option": "save",
-  "graph dir": "../result",
-  "csv dir": "../result",
-  "print all ac": false
+  "graph dir": "../unit_test_result",
+  "csv dir": "../unit_test_result",
+  "print all ac": false,
+  "figure size x": 36,
+  "figure size y": 16,
+  "graph dpi": 100,
+  "graph font size": 4
 }
-
 ```
 ###  4.3. <a name='TableofparametersinJSONconfigfile'></a>Table of parameters in JSON config file
 
