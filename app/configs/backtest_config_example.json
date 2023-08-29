@@ -19,7 +19,7 @@
   "profit target": 0.3,
   "graph show option": "save",
   "graph dir": "../../unit_test_result",
-  "csv dir": "../../resuunit_test_resultlt",
+  "csv dir": "../../unit_test_result",
   "print all ac": false,
   "figure size x": 36,
   "figure size y": 16,
