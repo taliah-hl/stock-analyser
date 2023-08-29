@@ -1,5 +1,5 @@
-from stock_analyser import StockAnalyser
-from stock_analyser import BuyptFilter
+from app.stock_analyser import StockAnalyser
+from app.stock_analyser import BuyptFilter
 import pandas as pd
 import numpy as np
 import pytest

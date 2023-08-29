@@ -1,4 +1,8 @@
 ## import modules
+
+import sys
+sys.path.append('/mnt/c/users/taliah/code/asiabots/stock/stock-peak-bottom')
+
 from loguru import logger
 import numpy as np
 import pandas as pd
@@ -16,7 +20,7 @@ import re
 
 ## custom import
 
-import stock_analyser as sa
+from app.stock_analyser import(StockAnalyser, BuyptFilter, DayType)
 
 
 class Action(enum.Enum):
@@ -236,7 +240,7 @@ class BackTest():
                     figdpi: int=200,
                     annotfont: float=4,
                     csv_dir: str=None, to_print_stock_data: bool=True 
-                  )->sa.StockAnalyser:
+                  )->StockAnalyser:
         """
             init StockAnalyser object using StockAnalyser.default_analyser
 
@@ -259,7 +263,7 @@ class BackTest():
             - `figdpi`: dpi of graph
             - `csv_dir`: directory to save csv file of stock data and backtest result
         """
-        stock = sa.StockAnalyser()
+        stock = StockAnalyser()
         if not bp_filters:
             bp_filters = self.bp_filters
 
@@ -527,7 +531,7 @@ class BackTest():
                     #print(f"sold, is holding={is_holding}, today: {txn_table.index[idx]}")
             
              ## 2. Check buy
-            if ((self._stock_table['day of interest'][idx]==sa.DayType.BUYPT) and (not is_holding) and idx != len(txn_table)-1):
+            if ((self._stock_table['day of interest'][idx]==DayType.BUYPT) and (not is_holding) and idx != len(txn_table)-1):
                 #logger.debug("check buy triggered")
                 # buy with that day close price
                 #print(f"in checkbuy\n, is holding={is_holding}, today: {txn_table.index[idx]}, cash={txn_table['cash'][idx-1]}")
@@ -906,7 +910,7 @@ if __name__ == "__main__":
                 
             runner(lines, stockstart, stockend, capital, 
                 SellStrategy.TRAILING_STOP , ts_percent=0.05,  
-                bp_filters={sa.BuyptFilter.CONVERGING_DROP, sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.MA_SHORT_ABOVE_LONG},
+                bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.MA_SHORT_ABOVE_LONG},
                     ma_short_list=[50,3],
                     ma_long_list=[200,15],
                     graph_showOption=graph_show_opt,
@@ -917,7 +921,7 @@ if __name__ == "__main__":
             # filter: peak bottom and ma above
             # runner(stockticker, stockstart, stockend, capital, 
             #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-            #        bp_filters={sa.BuyptFilter.CONVERGING_DROP, sa.BuyptFilter.IN_UPTREND, sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.MA_SHORT_ABOVE_LONG},
+            #        bp_filters={BuyptFilter.CONVERGING_DROP, BuyptFilter.IN_UPTREND, BuyptFilter.RISING_PEAK, BuyptFilter.MA_SHORT_ABOVE_LONG},
             #         ma_short_list=[3, 50],
             #         ma_long_list=[13, 150],
             #         graph_showOption=graph_show_opt,
@@ -927,7 +931,7 @@ if __name__ == "__main__":
             # filter:sma cross only
             runner(stockticker, stockstart, stockend, capital, 
                 SellStrategy.TRAILING_AND_FIXED_SL , ts_percent=0.05,
-                bp_filters={sa.BuyptFilter.RISING_PEAK, sa.BuyptFilter.CONVERGING_DROP},
+                bp_filters={BuyptFilter.RISING_PEAK, BuyptFilter.CONVERGING_DROP},
                     ma_short_list=[3],
                     ma_long_list=[9],
                     
@@ -938,7 +942,7 @@ if __name__ == "__main__":
             ### ADD FILTER EXAMPLE
             # runner(stockticker, stockstart, stockend, capital, 
             #        SellStrategy.Trailing_and_fixed_stoploss, ts_percent=0.05,
-            #        bp_filters={sa.BuyptFilter.Some_filter},     # pass filter here
+            #        bp_filters={BuyptFilter.Some_filter},     # pass filter here
             #         graph_showOption=graph_show_opt,
             #         graph_dir=graph_file_dir,
             #        print_all_ac=True, csv_dir=csv_dir)
@@ -980,7 +984,7 @@ if __name__ == "__main__":
             sell_strategy_str = sell_strategy_str.upper()
 
 
-        for data in sa.BuyptFilter:
+        for data in BuyptFilter:
             if data.name in bp_filters_list:
                 bp_filter.add(data)
 

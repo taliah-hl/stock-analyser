@@ -1,5 +1,8 @@
-import stock_analyser as sa
-import backtest as bt
+import sys
+sys.path.append('/mnt/c/users/taliah/code/asiabots/stock/stock-peak-bottom')
+
+from app import stock_analyser as sa
+from app import backtest as bt
 
 # set up stock account, specify stock ticker, start, end, capital
 # set up stock account, specify stock ticker, start, end, capital

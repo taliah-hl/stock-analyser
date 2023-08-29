@@ -10,7 +10,7 @@
   "buy strategy": "FOLLOW_BUYPT_FILTER",
   "sell strategy": "TRAILING_STOP",
   "graph show option": "save",
-  "graph dir": "../../unit_test_result",
-  "csv dir": "../../unit_test_result",
+  "graph dir": "../unit_test_result",
+  "csv dir": "../unit_test_result",
   "print all ac": true
 }
