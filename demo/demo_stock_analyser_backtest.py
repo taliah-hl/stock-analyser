@@ -1,3 +1,4 @@
+# Demo py file for how to use StockAnalyser and Backtest
 import sys
 sys.path.append('/mnt/c/users/taliah/code/asiabots/stock/stock-peak-bottom')
 
@@ -6,8 +7,8 @@ from app import backtest as bt
 
 # set up stock account, specify stock ticker, start, end, capital
 # set up stock account, specify stock ticker, start, end, capital
-pdd_ac = bt.StockAccount('PDD', '2023-01-01', '2023-08-01', 10000)
-vrtx_ac = bt.StockAccount('VRTX', '2023-01-01', '2023-08-01', 10000)
+pdd_ac = bt.StockAccount('PDD', '2023-06-01', '2023-08-01', 10000)
+vrtx_ac = bt.StockAccount('VRTX', '2023-06-01', '2023-08-01', 10000)
 
 # initialize backtest
 back_test = bt.BackTest()
@@ -28,8 +29,6 @@ back_test.set_sell_strategy(strategy=bt.SellStrategy.TRAIL_FIX_SL_AND_PROFTARGET
 
 # get revenue of ac
 revenue = pdd_ac.cal_revenue()
-# print roll result
-# pdd_ac.print_txn()
 
 vrtx_ac.txn = back_test.roll(pdd_ac,
                              ma_short_list=[3, 20],
@@ -38,7 +37,12 @@ vrtx_ac.txn = back_test.roll(pdd_ac,
                              graph_showOption='save',
                              csv_dir='../folder_name'
                         )
+vrtx_ac.no_of_trade = back_test.trade_tmie_of_ac
+
+vrtx_ac.cal_revenue()
+vrtx_ac.cal_buy_and_hold()
 vrtx_ac.print_txn()
+
 
 
 

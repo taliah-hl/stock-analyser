@@ -53,7 +53,7 @@ class StockAccount():
         self.txn: pd.DataFrame=None
         self.revenue: float=None
         self.revenue_buy_and_hold: float=None
-        self.no_of_trade: int=0
+        self.no_of_trade: int=None
 
     
     def print_txn(self):
@@ -81,9 +81,11 @@ class StockAccount():
             fio.write(textbox)
             fio.write('\n')
             fio.write('revenue: ,'+'{:.2%}'.format(self.revenue) + ', {:.2f}\n'.format(self.initial_capital * (self.revenue) ))
-            fio.write('revenue if buy and hold: ,')
-            fio.write('{:.2%}'.format(self.revenue_buy_and_hold) +', {:.2f}\n'.format(self.initial_capital * (self.revenue_buy_and_hold) ))
-            fio.write('no. of trade: ,' + str(self.no_of_trade))
+            if self.revenue_buy_and_hold is not None:
+                fio.write('revenue if buy and hold: ,')
+                fio.write('{:.2%}'.format(self.revenue_buy_and_hold) +', {:.2f}\n'.format(self.initial_capital * (self.revenue_buy_and_hold) ))
+            if self.no_of_trade is not None:
+                fio.write('no. of trade: ,' + str(self.no_of_trade))
             
 
         logger.info(f"csv saved to {save_path_norepeat}")
