@@ -209,7 +209,6 @@ look for arguments in command line
 | `-j` `--configfile`| config file (.json)|./config.json|
 |`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
 | `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
-| `--figsize` | figure size of graph ||
 |`-o` `--showopt` | graph show option |"save" - save to graph_dir<br>"show" - show by plot.show()<br>"no" - don't plot graph   |
 
 ###  4.6. <a name='Importclass'></a>Import class
