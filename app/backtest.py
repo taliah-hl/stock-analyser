@@ -182,6 +182,8 @@ class BackTest():
         self.profit_target=float('inf')
         self.bp_filters=set()
         self.trade_tmie_of_ac: int=0
+        self.total_mv = None   # record total MV of all stock in each day
+        self.__max_mv = None
 
 
     def set_buy_strategy(self, strategy: BuyStrategy=None, buypt_filters: set=set())->None:
@@ -418,7 +420,7 @@ class BackTest():
            csv_dir: str=None, to_print_stock_data: bool=True )->pd.DataFrame:
         
         """
-        - conduct roll over to conduct back tes
+        - roll over to conduct back test
         
         return 
         ---
@@ -590,6 +592,13 @@ class BackTest():
             txn_table.iloc[i, mv_col] = txn_table['close price'][i] * txn_table['share'][i]
             txn_table.iloc[i, ass_col] = txn_table['cash'][i] + txn_table['MV'][i]
 
+        if self.total_mv is None:
+            self.total_mv = pd.DataFrame(txn_table['MV'], columns=[acc.ticker], index= txn_table.index)
+        
+        else:
+            self.total_mv[acc.ticker] = txn_table["MV"]
+        
+
         return txn_table
         
     def print_revenue(self, ac_list:list, total_revenue: float, average_rev_buy_hold: float, save_path:str=None, textbox: str=None):
@@ -649,7 +658,17 @@ class BackTest():
         revenue_table.to_csv(save_path_norepeat)
         with open(save_path_norepeat, 'a') as fio:
             fio.write(textbox)
+            fio.write("\n")
+            fio.write(f"maximum market value in a day: ,{self.__max_mv}")
         logger.info(f"overall revenue csv saved to {save_path_norepeat}")
+
+    def get_total_mv(self):
+        if self.total_mv.empty:
+            raise Exception("total mv has no column when need to get total mv!")
+        self.total_mv['total mv'] = self.total_mv.sum(axis=1)
+        logger.debug("----  total mv  -----")
+        logger.debug(tabulate(self.total_mv, headers='keys', tablefmt='psql'))
+        self.__max_mv = self.total_mv['total mv'].max()
 
 
 
@@ -774,8 +793,10 @@ def runner(tickers, start:str, end:str, capital:float,
 
         avg_rev_bh = sum(rev_bh_list) / len(rev_bh_list)
         final_rev = ( total_finl_cap - capital * len(tickers))/(capital * len(tickers))
+        back_test.get_total_mv()
         logger.info(f"total revenue of run: {final_rev}")
         back_test.print_revenue(acc_list, final_rev, avg_rev_bh, save_path=csv_dir, textbox=f'trail stop={ts_percent}, fixed stop loss={fixed_sl}, profit target={profit_target}')
+        
         return final_rev
 
 def yearly_test():  # test for temporary use
