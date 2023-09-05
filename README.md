@@ -357,7 +357,7 @@ class `StockAccount` in `backtest.py` contain the back test information of each 
 - Data type of `StockAccount.txn`:
   - pd.DataFrame
 - produce:
-  - roll result of back test (`../../result/roll_result_stock ticker_start date_end date.csv`)
+  - roll result of back test (`../../result/roll_result_{stock ticker}_{start date}_{end date}.csv`)
 - sample file:
   -  [/exmaple/roll_result_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 - If list of stock is run, will produce a csv file record revenue of each stock: `../../result/all_revenue.csv`
