@@ -128,7 +128,7 @@ arguments of running `stock_analyser.py` in command line
 |`-t` `--ticker` | stock ticker| PDD
 |`-s` `--start` | start date| 2023-01-01|
 | `-e` `--end` | end date|2023-08-01|
-| `-f` `stocklist_file`| stock list file (.txt)|./stock_list.txt<br>([exmaple file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/app/configs/hot25stocks.txt?ref_type=heads))|
+| `-f` `--stocklist_file`| stock list file (.txt)|./stock_list.txt<br>([exmaple file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/app/configs/hot25stocks.txt?ref_type=heads))|
 |`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
 | `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
 |`-o` `--showopt` | graph show option |"save" - save to graph_dir<br>"show" - show by plot.show()<br>"no" - don't plot graph   |
