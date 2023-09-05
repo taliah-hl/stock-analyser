@@ -1,17 +1,19 @@
 <!-- vscode-markdown-toc -->
 * 1. [Goal](#Goal)
 * 2. [Buy point filters](#Buypointfilters)
+	* 2.1. [How to add buy point filter](#Howtoaddbuypointfilter)
 * 3. [Sell Strategy](#SellStrategy)
 * 4. [How to use](#Howtouse)
 	* 4.1. [run `stock_analyser.py`](#runstock_analyser.py)
 		* 4.1.1. [Description](#Description)
 		* 4.1.2. [run `stock_analyser.py` in command line](#runstock_analyser.pyincommandline)
+		* 4.1.3. [Outputs](#Outputs)
 	* 4.2. [Run `backtest.py`](#Runbacktest.py)
 		* 4.2.1. [Description](#Description-1)
 		* 4.2.2. [Run `backtest.py` in command line](#Runbacktest.pyincommandline)
 		* 4.2.3. [run by config (.json) in command line](#runbyconfig.jsonincommandline)
 		* 4.2.4. [Parameter parsing logic when run in command line](#Parameterparsinglogicwhenrunincommandline)
-		* 4.2.5. [Outputs](#Outputs)
+		* 4.2.5. [Outputs](#Outputs-1)
 	* 4.3. [Import class](#Importclass)
 * 5. [Details of `StockAnalyser.stock_data`](#DetailsofStockAnalyser.stock_data)
 	* 5.1. [columns in `StockAnalyser.stock_data`:](#columnsinStockAnalyser.stock_data:)
@@ -27,7 +29,9 @@
 	* 10.1. [example plot](#exampleplot)
 * 11. [Unit Test](#UnitTest)
 	* 11.1. [Test script](#Testscript)
+		* 11.1.1. [Expected Output](#ExpectedOutput)
 	* 11.2. [Pytest](#Pytest)
+		* 11.2.1. [Expected Output](#ExpectedOutput-1)
 * 12. [Techniques Studied](#TechniquesStudied)
 	* 12.1. [Stock price smoothing technique](#Stockpricesmoothingtechnique)
 * 13. [Bug to be solved:](#Bugtobesolved:)
@@ -63,6 +67,7 @@ main class:
 
 - maximum draw down
 - maximum market value
+- Bug to be fixed regarding [inaccuracy in EMA in early period](#Bugtobesolved:)
 
 ##  1. <a name='Goal'></a>Goal
 
@@ -85,6 +90,9 @@ main class:
 | RISING_PEAK  | For all bottoms during uptrend:<br><br>if rise above previous peak before next peak, <br><br> the point rise above previous peak is defined as break point |
 |MA_SHORT_ABOVE_LONG |   all points for corresponding ma in "ma short" > "ma long" is set as buy points <br><br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> all points where ma3> ma9 and ma20>ma50 are set as buy points|
 
+###  2.1. <a name='Howtoaddbuypointfilter'></a>How to add buy point filter
+
+- refer to [this issue](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/issues/4) or  commit [b9809e5a](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/commit/b9809e5a2879a3b4268f109e409fce6c956f3813)
 
 ##  3. <a name='SellStrategy'></a>Sell Strategy
 `SellStrategy` in app/back_test.py
@@ -120,7 +128,7 @@ arguments of running `stock_analyser.py` in command line
 |`-t` `--ticker` | stock ticker| PDD
 |`-s` `--start` | start date| 2023-01-01|
 | `-e` `--end` | end date|2023-08-01|
-| `-f` `stocklist_file`| stock list file (.txt)|./stock_list.txt|
+| `-f` `stocklist_file`| stock list file (.txt)|./stock_list.txt<br>([exmaple file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/app/configs/hot25stocks.txt?ref_type=heads))|
 |`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
 | `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
 |`-o` `--showopt` | graph show option |"save" - save to graph_dir<br>"show" - show by plot.show()<br>"no" - don't plot graph   |
@@ -143,7 +151,7 @@ python stock_analyser.py -t=PDD -s=2022-08-01 -e=2023-08-01 -g=../graph_dir -v=.
 python stock_analyser.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-01 -g=../graph_dir -v=../csv_dir
 ```
 
-##### Outputs
+####  4.1.3. <a name='Outputs'></a>Outputs
 
 1. print analysis data in .csv file 
      - default file name and directory: `../../result/stock_data_{stock ticker}_{start date}_{end date}.csv`
@@ -160,9 +168,9 @@ python stock_analyser.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-01 -g
 
 ####  4.2.1. <a name='Description-1'></a>Description
 
-`backtest.py` obtain analysis data from `stock_analyser.py`, then conduct back test to simulating trading a stock. 
+`backtest.py` obtain analysis data from `stock_analyser.py`, then conduct back test to simulate trading a stock. 
 
-In the back test, user can specify which stock to trade, capital to put in, buy and sell strategy etc., and get a trading simulation in the form of a table.
+In the back test, user can specify which stock to trade, capital to put in, buy and sell strategy etc., and get a trading simulation in the form of a transaction table saved in `StockAccount.txn`.
 
 ####  4.2.2. <a name='Runbacktest.pyincommandline'></a>Run `backtest.py` in command line
 
@@ -187,7 +195,7 @@ go to app/backtest.py
 - run pdd, 1 year, with captial=$10000, no need to plot graph
 
 ```
-python backtest.py -t=pdd -s=2022-08-01 -e=2023-08-16 -c=10000 -o=no -v=../back_test_result -g=../graph_dir
+python backtest.py -t=pdd -s=2022-08-01 -e=2023-08-16 -c=10000 -o=no -v=../back_test_result
 ```
 
 - run  list of stock from txt file, 1 year, with captial=$10000, save graph
@@ -206,9 +214,9 @@ python backtest.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-16 -c=10000
 
 | param | description |  data type|example| required|
 | ------ | ------ |------ |------ |------ |
-|ticker|     stock ticker   |  str<br>*or*<br>list of str |"PDD"<br>["PDD", "TSLA", "VRTX"] |yes|
-|  start      |    test start date    |  str (yyyy-mm-dd) | "2023-01-01" |yes|
-|  end      |    test end date    |  str (yyyy-mm-dd) | "2023-08-01" |yes|
+|ticker|     stock ticker   |  str<br>/<br>list of str |"PDD"<br>["PDD", "TSLA", "VRTX"] |yes|
+|  start      |    test start date<br> (yyyy-mm-dd)    |  str  | "2023-01-01" |yes|
+|  end      |    test end date <br>(yyyy-mm-dd)   |  str | "2023-08-01" |yes|
 |  capital      |    initial capital for backtest   |  int / float | 10000 |no<br>- if not set, set to default as 10000|
 |    ma short    |    short ma to use in MA_SHORT_ABOVE_LONG filter    |   list of int |[3]<br>[3,20]|no|
 |   ma long     |   long ma to use in MA_SHORT_ABOVE_LONG filter      |    list of int |[9]<br>[9,50]<br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> ==>all points where ma3> ma9 and ma20>ma50 will be set as buy points |no|
@@ -277,9 +285,9 @@ All param has to come from same source (e.g. all from command line, or all from 
 
 for example, you cannot set stock ticker in direct pass from command line, but set buy point filter in config
 
-if parameters are passed in from both side, will only use parameters from config file but ignore all parameters from command line
+if parameters are passed in from both side, only parameters from config file will be used, all parameters from command line will be ignored
 
-####  4.2.5. <a name='Outputs'></a>Outputs
+####  4.2.5. <a name='Outputs-1'></a>Outputs
 1. print analysis data in .csv file 
    - default file name and directory: `../../result/stock_data_{stock ticker}_{start date}_{end date}.csv`
    -  [click here to see details of all columns in stock data table](#columnsinStockAnalyser.stock_data:)
@@ -305,7 +313,7 @@ if parameters are passed in from both side, will only use parameters from config
 ##  5. <a name='DetailsofStockAnalyser.stock_data'></a>Details of `StockAnalyser.stock_data`
 
 
-main class of `stock_analysis.py` is `StockAnalyser`, which contain attribute `stock_data`
+main class of `stock_analyser.py` is `StockAnalyser`, which contain attribute `stock_data`
 
 `stock_data` contain the analysis data of the stock
 
@@ -313,7 +321,7 @@ main class of `stock_analysis.py` is `StockAnalyser`, which contain attribute `s
   - pd.DataFrame
 
 - produce:  
-  - stock_data csv file directly ( `../../result/stock_data_{stock ticker}_ {start date}_{end date}.csv` )
+  - stock_data csv file ( `../../result/stock_data_{stock ticker}_ {start date}_{end date}.csv` )
 - sample file:  
   - [/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 
@@ -512,7 +520,7 @@ the project contain a shell script that will test running `stock_analyser.py` an
 ```
 ./test_script.sh
 ```
-#### Expected Output
+####  11.1.1. <a name='ExpectedOutput'></a>Expected Output
 
 if no errors occur, these output filss are expected to be produced from the sctipt:
 - PDD_2023-05-01_2023-08-20.png
@@ -548,7 +556,7 @@ test clients:
 - tests/test_backtest.py
 - tests/test_stock_analyser.py
 
-#### Expected Output
+####  11.2.1. <a name='ExpectedOutput-1'></a>Expected Output
 - 6 graphs of random stocks and 1 stock data csv file are expected to be produced
 
 
@@ -565,12 +573,15 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 ##  13. <a name='Bugtobesolved:'></a>Bug to be solved:
 - ema (hence MACD) in early segment of stock data is not accurate, since ema is calculate base on yesturday's ema, so much earlier data before the specified start is required to get an accurate ema
 
+- refer to [this issue](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/issues/5)
+
 ##  14. <a name='Version'></a>2021 Version
 ---
 
 - [Todo](#todo)
   - [1. Goal](#1-goal)
   - [2. Buy point filters](#2-buy-point-filters)
+    - [2.1. How to add buy point filter](#21-how-to-add-buy-point-filter)
   - [3. Sell Strategy](#3-sell-strategy)
   - [4. How to use](#4-how-to-use)
     - [4.1. run `stock_analyser.py`](#41-run-stock_analyserpy)
@@ -578,7 +589,7 @@ detail discussion of pros and cons of different techniques see `technique_and_th
       - [4.1.2. run `stock_analyser.py` in command line](#412-run-stock_analyserpy-in-command-line)
         - [Arguments](#arguments)
         - [Example](#example)
-        - [Outputs](#outputs)
+      - [4.1.3. Outputs](#413-outputs)
     - [4.2. Run `backtest.py`](#42-run-backtestpy)
       - [4.2.1. Description](#421-description)
       - [4.2.2. Run `backtest.py` in command line](#422-run-backtestpy-in-command-line)
@@ -606,9 +617,9 @@ detail discussion of pros and cons of different techniques see `technique_and_th
     - [10.1. example plot](#101-example-plot)
   - [11. Unit Test](#11-unit-test)
     - [11.1. Test script](#111-test-script)
-      - [Expected Output](#expected-output)
+      - [11.1.1. Expected Output](#1111-expected-output)
     - [11.2. Pytest](#112-pytest)
-      - [Expected Output](#expected-output-1)
+      - [11.2.1. Expected Output](#1121-expected-output)
   - [12. Techniques Studied](#12-techniques-studied)
     - [12.1. Stock price smoothing technique](#121-stock-price-smoothing-technique)
   - [13. Bug to be solved:](#13-bug-to-be-solved)
