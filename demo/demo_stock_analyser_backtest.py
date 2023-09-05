@@ -49,7 +49,9 @@ vrtx_ac.cal_revenue()
 vrtx_ac.cal_buy_and_hold()
 vrtx_ac.print_txn()
 
-
+# save roll result to df
+pdd_df = pdd_ac.txn 
+vrtx_df = vrtx_ac.txn
 
 
 # save roll result to csv
