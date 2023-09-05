@@ -4,14 +4,14 @@
 	* 2.1. [How to add buy point filter](#Howtoaddbuypointfilter)
 * 3. [Sell Strategy](#SellStrategy)
 * 4. [How to use](#Howtouse)
-	* 4.1. [run `stock_analyser.py`](#runstock_analyser.py)
+	* 4.1. [Run `stock_analyser.py`](#Runstock_analyser.py)
 		* 4.1.1. [Description](#Description)
-		* 4.1.2. [run `stock_analyser.py` in command line](#runstock_analyser.pyincommandline)
+		* 4.1.2. [Run `stock_analyser.py` in command line](#Runstock_analyser.pyincommandline)
 		* 4.1.3. [Outputs](#Outputs)
 	* 4.2. [Run `backtest.py`](#Runbacktest.py)
 		* 4.2.1. [Description](#Description-1)
 		* 4.2.2. [Run `backtest.py` in command line](#Runbacktest.pyincommandline)
-		* 4.2.3. [run by config (.json) in command line](#runbyconfig.jsonincommandline)
+		* 4.2.3. [Run by config (.json) in command line](#Runbyconfig.jsonincommandline)
 		* 4.2.4. [Parameter parsing logic when run in command line](#Parameterparsinglogicwhenrunincommandline)
 		* 4.2.5. [Outputs](#Outputs-1)
 	* 4.3. [Import class](#Importclass)
@@ -112,12 +112,12 @@ main class:
 
 ##  4. <a name='Howtouse'></a>How to use
 
-###  4.1. <a name='runstock_analyser.py'></a>run `stock_analyser.py`
+###  4.1. <a name='Runstock_analyser.py'></a>Run `stock_analyser.py`
 ####  4.1.1. <a name='Description'></a>Description
 
  `stock_analyser.py` analyse a stock over a period and produce analysis information like peak, bottom points, up / down trend, zigzag indicator, MACD etc.
 
-####  4.1.2. <a name='runstock_analyser.pyincommandline'></a>run `stock_analyser.py` in command line
+####  4.1.2. <a name='Runstock_analyser.pyincommandline'></a>Run `stock_analyser.py` in command line
 
 ##### Arguments
 
@@ -203,7 +203,7 @@ python backtest.py -t=pdd -s=2022-08-01 -e=2023-08-16 -c=10000 -o=no -v=../back_
 ```
 python backtest.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-16 -c=10000 -o=save -v=../back_test_result -g=../graph_dir
 ```
-####  4.2.3. <a name='runbyconfig.jsonincommandline'></a>run by config (.json) in command line 
+####  4.2.3. <a name='Runbyconfig.jsonincommandline'></a>Run by config (.json) in command line 
 
 ##### Description
 
@@ -357,7 +357,7 @@ class `StockAccount` in `backtest.py` contain the back test information of each 
 - Data type of `StockAccount.txn`:
   - pd.DataFrame
 - produce:
-  - roll result of back test (`../../result/roll_result_stock ticker_ start date_end date.csv`)
+  - roll result of back test (`../../result/roll_result_stock ticker_start date_end date.csv`)
 - sample file:
   -  [/exmaple/roll_result_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 - If list of stock is run, will produce a csv file record revenue of each stock: `../../result/all_revenue.csv`
@@ -522,7 +522,7 @@ the project contain a shell script that will test running `stock_analyser.py` an
 ```
 ####  11.1.1. <a name='ExpectedOutput'></a>Expected Output
 
-if no errors occur, these output filss are expected to be produced from the sctipt:
+if no errors occur, these output files are expected to be produced from the sctipt:
 - PDD_2023-05-01_2023-08-20.png
 - PLTR_2022-08-01_2023-08-01.png
 - TSLA_2022-08-01_2023-08-01.png
@@ -584,9 +584,9 @@ detail discussion of pros and cons of different techniques see `technique_and_th
     - [2.1. How to add buy point filter](#21-how-to-add-buy-point-filter)
   - [3. Sell Strategy](#3-sell-strategy)
   - [4. How to use](#4-how-to-use)
-    - [4.1. run `stock_analyser.py`](#41-run-stock_analyserpy)
+    - [4.1. Run `stock_analyser.py`](#41-run-stock_analyserpy)
       - [4.1.1. Description](#411-description)
-      - [4.1.2. run `stock_analyser.py` in command line](#412-run-stock_analyserpy-in-command-line)
+      - [4.1.2. Run `stock_analyser.py` in command line](#412-run-stock_analyserpy-in-command-line)
         - [Arguments](#arguments)
         - [Example](#example)
       - [4.1.3. Outputs](#413-outputs)
@@ -595,7 +595,7 @@ detail discussion of pros and cons of different techniques see `technique_and_th
       - [4.2.2. Run `backtest.py` in command line](#422-run-backtestpy-in-command-line)
         - [Arguments](#arguments-1)
         - [Example](#example-1)
-      - [4.2.3. run by config (.json) in command line](#423-run-by-config-json-in-command-line)
+      - [4.2.3. Run by config (.json) in command line](#423-run-by-config-json-in-command-line)
         - [Description](#description)
         - [Table of parameters in JSON config file](#table-of-parameters-in-json-config-file)
         - [Example Command](#example-command)
