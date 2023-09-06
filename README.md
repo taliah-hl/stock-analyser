@@ -67,9 +67,12 @@ main class:
 
 # Todo  
 
-- maximum draw down
-- maximum market value
-- Bug to be fixed regarding [inaccuracy in EMA in early period](#Bugtobesolved:)
+1. maximum draw down
+2. maximum amount of fund actually put into market (currently calculated as maximum market value)
+     - say I am watching 50 stocks with $10,000 allocated for each ($500,000 in total) 
+     - I buy whenver buy signal appear for each stock
+     - I want to know maximum amount of money actually held in the market at the same time over the period
+3. Bug to be fixed regarding [inaccuracy in EMA in early period](#Bugtobesolved:)
 
 ##  1. <a name='Goal'></a>Goal
 

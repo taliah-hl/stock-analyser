@@ -17,8 +17,10 @@ $10,000 initial capital is allocated for each stock independently
 2. 2020-06-01 2021-06-01 (bullish market)
 3. 2008-03-01 to 2009-03-01 (financial crisis)
 4. 2008-03-01 to 2010-03-01 (financial crisis to recovery)
-5. 
+5. 2023-01-01 to 2023-08-20 (YTD)
 6. 2022-08-20 to 2023-08-20 (recent 1 year)
+7. 2020-08-20 to 2023-08-20 (recent 3 year)
+8. 2018-08-20 to 2023-08-20 (recent 5 year)
 
 ## Buy Point Filter
 
