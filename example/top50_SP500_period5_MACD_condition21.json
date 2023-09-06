@@ -51,7 +51,7 @@
     "COP",
     "VZ"
   ],
-  "start": "2022-08-20",
+  "start": "2023-01-01",
   "end": "2023-08-20",
   "buy point filters": ["CONVERGING_DROP", "RISING_PEAK"],
   "stop loss percent": 0.05,

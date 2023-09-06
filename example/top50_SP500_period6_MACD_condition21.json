@@ -51,9 +51,9 @@
     "COP",
     "VZ"
   ],
-  "start": "2023-01-01",
+  "start": "2022-08-20",
   "end": "2023-08-20",
-  "buy point filters": ["IN_UPTREND"],
+  "buy point filters": ["CONVERGING_DROP", "RISING_PEAK"],
   "stop loss percent": 0.05,
   "fixed stop loss percent": 0.03,
   "buy strategy": "FOLLOW_BUYPT_FILTER",

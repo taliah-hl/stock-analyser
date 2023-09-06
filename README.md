@@ -26,7 +26,9 @@
 	* 9.2. [Source of uptrend](#Sourceofuptrend)
 	* 9.3. [Parameter of StockAnalyser.default_analyser](#ParameterofStockAnalyser.default_analyser)
 * 10. [Example Result](#ExampleResult)
-	* 10.1. [example plot](#exampleplot)
+	* 10.1. [Batch of Back Test](#BatchofBackTest)
+	* 10.2. [Example Plot](#ExamplePlot)
+	* 10.3. [example plot](#exampleplot)
 * 11. [Unit Test](#UnitTest)
 	* 11.1. [Test script](#Testscript)
 		* 11.1.1. [Expected Output](#ExpectedOutput)
@@ -501,14 +503,19 @@ Parameter of `StockAnalyser.default_analyser`
 
 
 ##  10. <a name='ExampleResult'></a>Example Result
+###  10.1. <a name='BatchofBackTest'></a>Batch of Back Test
+- batch of back test using different period and buy, sell condition is conducted
+- shown in [/example](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/example?ref_type=heads) folder 
+- summary of result: [exmaple_result.md](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/example_result.md)
 
+###  10.2. <a name='ExamplePlot'></a>Plotting Extrema from Different Source
 result of plotting extrema from different price source: 
-- `result_plot_extrema.pdf`
+- [result_plot_extrema.pdf](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/result_plot_extrema.pdf?ref_type=heads)
 - Example plot: [/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
   - break point found by peak-bottom
-- batch of back test using different period and buy, sell condition is shown in [/example](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/example?ref_type=heads) folder and [exmaple_result.md](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/example_result.md)
 
-###  10.1. <a name='exampleplot'></a>example plot
+
+###  10.3. <a name='exampleplot'></a>Example plot
 
 ![Alt text](example/TSLA_2023-03-01_2023-07-01.png)
 
@@ -614,7 +621,9 @@ detail discussion of pros and cons of different techniques see `technique_and_th
     - [9.2. Source of uptrend](#92-source-of-uptrend)
     - [9.3. Parameter of StockAnalyser.default\_analyser](#93-parameter-of-stockanalyserdefault_analyser)
   - [10. Example Result](#10-example-result)
-    - [10.1. example plot](#101-example-plot)
+    - [10.1. Batch of Back Test](#101-batch-of-back-test)
+    - [10.2. Plotting Extrema from Different Source](#102-plotting-extrema-from-different-source)
+    - [10.3. Example plot](#103-example-plot)
   - [11. Unit Test](#11-unit-test)
     - [11.1. Test script](#111-test-script)
       - [11.1.1. Expected Output](#1111-expected-output)
