@@ -1,0 +1,16 @@
+{
+  "ticker": ["pdd", "nvda"],
+  "start": "2022-08-01",
+  "end": "2023-08-20",
+  "ma short": [3, 20],
+  "ma long": [9, 50],
+  "buy point filters": ["IN_UPTREND"
+],
+  "stop loss percent": 0.05,
+  "buy strategy": "FOLLOW_BUYPT_FILTER",
+  "sell strategy": "TRAILING_STOP",
+  "graph show option": "save",
+  "graph dir": "../unit_test_result",
+  "csv dir": "../unit_test_result",
+  "print all ac": true
+}

@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# trial file
+try.py
+*try*.py
+*try*.ipynb
+find_extrema_with_DMA.ipynb
+
 # Distribution / packaging
 .Python
 build/
@@ -21,6 +27,8 @@ sdist/
 var/
 wheels/
 share/python-wheels/
+bin/
+*venv*
 *.egg-info/
 .installed.cfg
 *.egg
@@ -116,3 +124,4 @@ dmypy.json
 
 # vscode
 .vscode
+share/man/man1/ttx.1
