@@ -1,3 +1,5 @@
+# Stock Analysis and Back Test Project
+
 - [1. Abstract](#1-abstract)
 - [2. Buy Strategy](#2-buy-strategy)
 - [3. Sell Strategy](#3-sell-strategy)
@@ -13,8 +15,6 @@
 - [13. Bug to be solved:](#13-bug-to-be-solved)
 - [14. Further Study](#14-further-study)
 
-
-# Stock Analysis and Back Test Project
 
 ##  1. <a name='Abstract'></a>Abstract
 
