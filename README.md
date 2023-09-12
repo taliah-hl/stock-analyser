@@ -1,50 +1,18 @@
-<!-- vscode-markdown-toc -->
-* 1. [Abstract](#Abstract)
-	* 1.1. [Main classes in the project](#Mainclassesintheproject)
-* 2. [Buy Strategy](#BuyStrategy)
-	* 2.1. [All available filters for finding buy points](#Allavailablefiltersforfindingbuypoints)
-* 3. [Sell Strategy](#SellStrategy)
-* 4. [How to use](#Howtouse)
-	* 4.1. [Run `stock_analyser.py`](#Runstock_analyser.py)
-		* 4.1.1. [Description](#Description)
-		* 4.1.2. [Run `stock_analyser.py` in command line](#Runstock_analyser.pyincommandline)
-		* 4.1.3. [Outputs](#Outputs)
-	* 4.2. [Run `backtest.py`](#Runbacktest.py)
-		* 4.2.1. [Description](#Description-1)
-		* 4.2.2. [Run `backtest.py` in command line](#Runbacktest.pyincommandline)
-		* 4.2.3. [Run by config (.json) in command line](#Runbyconfig.jsonincommandline)
-		* 4.2.4. [Parameter parsing logic when run in command line](#Parameterparsinglogicwhenrunincommandline)
-		* 4.2.5. [Outputs](#Outputs-1)
-	* 4.3. [Import class](#Importclass)
-* 5. [Details of `StockAnalyser.stock_data`](#DetailsofStockAnalyser.stock_data)
-	* 5.1. [columns in `StockAnalyser.stock_data`:](#columnsinStockAnalyser.stock_data:)
-* 6. [Details of `StockAccount.txn`](#DetailsofStockAccount.txn)
-	* 6.1. [columns in  `StockAccount.txn`:](#columnsinStockAccount.txn:)
-* 7. [Buy Sell Logic](#BuySellLogic)
-* 8. [Log](#Log)
-* 9. [Advanced Settings](#AdvancedSettings)
-	* 9.1. [Source of Extrema:](#SourceofExtrema:)
-	* 9.2. [Source of uptrend](#Sourceofuptrend)
-	* 9.3. [Parameter of StockAnalyser.default_analyser](#ParameterofStockAnalyser.default_analyser)
-* 10. [Example Result](#ExampleResult)
-	* 10.1. [Batch of Back Test](#BatchofBackTest)
-	* 10.2. [Plotting Extrema from Different Source](#PlottingExtremafromDifferentSource)
-	* 10.3. [Example plot](#Exampleplot)
-* 11. [Unit Test](#UnitTest)
-	* 11.1. [Test script](#Testscript)
-		* 11.1.1. [Expected Output](#ExpectedOutput)
-	* 11.2. [Pytest](#Pytest)
-		* 11.2.1. [Expected Output](#ExpectedOutput-1)
-* 12. [Techniques Studied](#TechniquesStudied)
-	* 12.1. [Stock price smoothing technique](#Stockpricesmoothingtechnique)
-* 13. [Bug to be solved:](#Bugtobesolved:)
-* 14. [Further Study](#FurtherStudy)
+- [1. Abstract](#1-abstract)
+- [2. Buy Strategy](#2-buy-strategy)
+- [3. Sell Strategy](#3-sell-strategy)
+- [4. How to use](#4-how-to-use)
+- [5. Details of `StockAnalyser.stock_data`](#5-details-of-stockanalyserstock_data)
+- [6. Details of `StockAccount.txn`](#6-details-of-stockaccounttxn)
+- [7. Buy Sell Logic](#7-buy-sell-logic)
+- [8. Log](#8-log)
+- [9. Advanced Settings](#9-advanced-settings)
+- [10. Example Result](#10-example-result)
+- [11. Unit Test](#11-unit-test)
+- [12. Techniques Studied](#12-techniques-studied)
+- [13. Bug to be solved:](#13-bug-to-be-solved)
+- [14. Further Study](#14-further-study)
 
-<!-- vscode-markdown-toc-config
-	numbering=true
-	autoSave=true
-	/vscode-markdown-toc-config -->
-<!-- /vscode-markdown-toc -->
 
 # Stock Analysis and Back Test Project
 
@@ -67,7 +35,7 @@ The project look for buy points and sell points on historic stock price, user ca
 - save the result of back test of a group of stocks
 - details refer to section  [Details of `StockAccount.txn`](#DetailsofStockAccount.txn)
 
-### file structure
+###  1.2. <a name='filestructure'></a>file structure
 
 ```
 .
