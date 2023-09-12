@@ -1,92 +1,83 @@
-<!-- vscode-markdown-toc -->
-* 1. [Goal](#Goal)
-* 2. [Buy point filters](#Buypointfilters)
-	* 2.1. [How to add buy point filter](#Howtoaddbuypointfilter)
-* 3. [Sell Strategy](#SellStrategy)
-* 4. [How to use](#Howtouse)
-	* 4.1. [Run `stock_analyser.py`](#Runstock_analyser.py)
-		* 4.1.1. [Description](#Description)
-		* 4.1.2. [Run `stock_analyser.py` in command line](#Runstock_analyser.pyincommandline)
-		* 4.1.3. [Outputs](#Outputs)
-	* 4.2. [Run `backtest.py`](#Runbacktest.py)
-		* 4.2.1. [Description](#Description-1)
-		* 4.2.2. [Run `backtest.py` in command line](#Runbacktest.pyincommandline)
-		* 4.2.3. [Run by config (.json) in command line](#Runbyconfig.jsonincommandline)
-		* 4.2.4. [Parameter parsing logic when run in command line](#Parameterparsinglogicwhenrunincommandline)
-		* 4.2.5. [Outputs](#Outputs-1)
-	* 4.3. [Import class](#Importclass)
-* 5. [Details of `StockAnalyser.stock_data`](#DetailsofStockAnalyser.stock_data)
-	* 5.1. [columns in `StockAnalyser.stock_data`:](#columnsinStockAnalyser.stock_data:)
-* 6. [Details of `StockAccount.txn`](#DetailsofStockAccount.txn)
-	* 6.1. [columns in  `StockAccount.txn`:](#columnsinStockAccount.txn:)
-* 7. [Buy Sell Logic](#BuySellLogic)
-* 8. [Log](#Log)
-* 9. [Advanced Settings](#AdvancedSettings)
-	* 9.1. [Source of Extrema:](#SourceofExtrema:)
-	* 9.2. [Source of uptrend](#Sourceofuptrend)
-	* 9.3. [Parameter of StockAnalyser.default_analyser](#ParameterofStockAnalyser.default_analyser)
-* 10. [Example Result](#ExampleResult)
-	* 10.1. [Batch of Back Test](#BatchofBackTest)
-	* 10.2. [Example Plot](#ExamplePlot)
-	* 10.3. [example plot](#exampleplot)
-* 11. [Unit Test](#UnitTest)
-	* 11.1. [Test script](#Testscript)
-		* 11.1.1. [Expected Output](#ExpectedOutput)
-	* 11.2. [Pytest](#Pytest)
-		* 11.2.1. [Expected Output](#ExpectedOutput-1)
-* 12. [Techniques Studied](#TechniquesStudied)
-	* 12.1. [Stock price smoothing technique](#Stockpricesmoothingtechnique)
-* 13. [Bug to be solved:](#Bugtobesolved:)
-* 14. [2021 Version](#Version)
-* 15. [Peaks and Bottoms](#PeaksandBottoms)
-	* 15.1. [Example](#Example)
-	* 15.2. [Limitations Using Blackman Window](#LimitationsUsingBlackmanWindow)
-	* 15.3. [Limitations Using Polynomial Regression](#LimitationsUsingPolynomialRegression)
-* 16. [Trend](#Trend)
-	* 16.1. [Example](#Example-1)
-	* 16.2. [Limitations](#Limitations)
-* 17. [Smoothing the Data ("Noise" Reduction)](#SmoothingtheDataNoiseReduction)
-* 18. [Linear Regression](#LinearRegression)
-
-<!-- vscode-markdown-toc-config
-	numbering=true
-	autoSave=true
-	/vscode-markdown-toc-config -->
-<!-- /vscode-markdown-toc --># Stock
-
-<a name='Version'></a>2023 Version
+- [1. Abstract](#1-abstract)
+- [2. Buy Strategy](#2-buy-strategy)
+- [3. Sell Strategy](#3-sell-strategy)
+- [4. How to use](#4-how-to-use)
+- [5. Details of `StockAnalyser.stock_data`](#5-details-of-stockanalyserstock_data)
+- [6. Details of `StockAccount.txn`](#6-details-of-stockaccounttxn)
+- [7. Buy Sell Logic](#7-buy-sell-logic)
+- [8. Log](#8-log)
+- [9. Advanced Settings](#9-advanced-settings)
+- [10. Example Result](#10-example-result)
+- [11. Unit Test](#11-unit-test)
+- [12. Techniques Studied](#12-techniques-studied)
+- [13. Bug to be solved:](#13-bug-to-be-solved)
+- [14. Further Study](#14-further-study)
 
 
-main class: 
+# Stock Analysis and Back Test Project
 
-`StockAnalyser` in app/stock_analyser.py
+##  1. <a name='Abstract'></a>Abstract
+
+This project aimed to define some buy and sell strategies for stock trading, and provide a class to test the profit of each strategy by back test simulation.
+
+The project look for buy points and sell points on historic stock price, user can conduct a back test by specifying buy, sell strategy and period.
+
+###  1.1. <a name='Mainclassesintheproject'></a>Main classes in the project
+
+ `StockAnalyser` in app/stock_analyser.py 
+- provide analysis information like moving average, MACD, Zizag indicator etc. in a form of a table
+- details refer to section [Details of `StockAnalyser.stock_data`](#DetailsofStockAnalyser.stock_data)
 
 `BackTest` in app/back_test.py
+- conduct back test with specified buy, sell strategy and period on a stock or group of stocks, calculate gain / loss over a period
 
 `StockAccount` in app/back_test.py
+- save the result of back test of a group of stocks
+- details refer to section  [Details of `StockAccount.txn`](#DetailsofStockAccount.txn)
 
-# Todo  
+###  1.2. <a name='filestructure'></a>file structure
 
-1. maximum draw down
-2. maximum amount of fund actually put into market (currently calculated as maximum market value)
-     - say I am watching 50 stocks with $10,000 allocated for each ($500,000 in total) 
-     - I buy whenver buy signal appear for each stock
-     - I want to know maximum amount of money actually held in the market at the same time over the period
-3. Bug to be fixed regarding [inaccuracy in EMA in early period](#Bugtobesolved:)
+```
+.
+|   result_plot_extrema.pdf
+|   technique_and_theory.md
+|   test_script.sh        <--- script to test running program in command line
+|   
++---app
+|   |   backtest.py        <--- conduct back test
+|   |   requirements.txt
+|   |   stock_analyser.py  <--- generate stock analysis information
+|   |   txt_to_list_transformer.py
+|   |   __init__.py
+|   |   
+|   |               
+|   +---configs             <--- json config example
++---demo
+|       demo_stock_analyser_backtest.ipynb
+|       demo_stock_analyser_backtest.py
+|       
++---example                 <--- example result
+|       example_result.md
+|           
+\---tests                   <--- pytest clients
+    |   test_backtest.py
+    |   test_stock_analyser.py
+    |   __init__.py  
 
-##  1. <a name='Goal'></a>Goal
+```
 
-1. to draw bowls on historical stock price in different time frame
+##  2. <a name='BuyStrategy'></a>Buy Strategy
 
-2. find break point (buy point)
+Available buy strategies are defined in `BuyptFilter` in app/stock_analyser.py
 
-3. set up sell strategy
+Other than common indicators looking for buy signal such as MACD, MA crossover, this project introduce a way to find break point of price by finding "converging drop pattern"  
 
-4. conduct back test and calculate revenue
+the method identify all drops (bowl shape) in the price curve, then identify the points meet the following condition:
 
-##  2. <a name='Buypointfilters'></a>Buy point filters
+- consecutive bowls
+- peak-to-bottom drop of the bowl less than peak-to-bottom drop of the previous bowl 
 
-`BuyptFilter` in app/stock_analyser.py
+###  2.1. <a name='Allavailablefiltersforfindingbuypoints'></a>All available filters for finding buy points
 
 | filter | description |
 | ------ | ------ |
@@ -95,12 +86,14 @@ main class:
 | RISING_PEAK  | For all bottoms during uptrend:<br><br>if rise above previous peak before next peak, <br><br> the point rise above previous peak is defined as break point |
 |MA_SHORT_ABOVE_LONG |   all points for corresponding ma in "ma short" > "ma long" is set as buy points <br><br>e.g. ma short=[3, 20]<br> ma long = [9, 50]<br> all points where ma3> ma9 and ma20>ma50 are set as buy points|
 
-###  2.1. <a name='Howtoaddbuypointfilter'></a>How to add buy point filter
 
-- refer to [this issue](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/issues/4) or  commit [b9809e5a](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/commit/b9809e5a2879a3b4268f109e409fce6c956f3813)
+
 
 ##  3. <a name='SellStrategy'></a>Sell Strategy
-`SellStrategy` in app/back_test.py
+
+sell points are identified according to the sell strategy set.
+
+Available sell strategies in `SellStrategy` in app/back_test.py
 | Strategy | description |
 | ------ | ------ |
 | DEFAULT| currently set as = TRAILING_STOP|
@@ -133,7 +126,7 @@ arguments of running `stock_analyser.py` in command line
 |`-t` `--ticker` | stock ticker| PDD
 |`-s` `--start` | start date| 2023-01-01|
 | `-e` `--end` | end date|2023-08-01|
-| `-f` `--stocklist_file`| stock list file (.txt)|./stock_list.txt<br>([exmaple file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/app/configs/hot25stocks.txt?ref_type=heads))|
+| `-f` `--stocklist_file`| stock list file (.txt)|./stock_list.txt<br>([exmaple file](app/configs/hot25stocks.txt?ref_type=heads))|
 |`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
 | `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
 |`-o` `--showopt` | graph show option |"save" - save to graph_dir<br>"show" - show by plot.show()<br>"no" - don't plot graph   |
@@ -161,10 +154,10 @@ python stock_analyser.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-01 -g
 1. print analysis data in .csv file 
      - default file name and directory: `../../result/stock_data_{stock ticker}_{start date}_{end date}.csv`
      - [click here to see details of all columns in stock data table](#columnsinStockAnalyser.stock_data:)
-     - [click here for example file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+     - [click here for example file](example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 2. produce analysis graph in .png file
     - default file name and directory: `../../result/{stock ticker}_{start date}_{end date}.png`
-    - [click here for example graph](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
+    - [click here for example graph](example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
 3. print analysis data and logging  in ./log/*.log 
 
 
@@ -283,7 +276,7 @@ python backtest.py -j=./configs/backtest_config_example.json
 ```
 
 - More config example:
-  - see folder [app/configs](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/app/configs?ref_type=heads)
+  - see folder [app/configs](app/configs?ref_type=heads)
 ####  4.2.4. <a name='Parameterparsinglogicwhenrunincommandline'></a>Parameter parsing logic when run in command line
 
 All param has to come from same source (e.g. all from command line, or all from config)
@@ -296,14 +289,14 @@ if parameters are passed in from both side, only parameters from config file wil
 1. print analysis data in .csv file 
    - default file name and directory: `../../result/stock_data_{stock ticker}_{start date}_{end date}.csv`
    -  [click here to see details of all columns in stock data table](#columnsinStockAnalyser.stock_data:)
-   - [click here for example file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+   - [click here for example file](example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 2. produce analysis graph in .png file
    - default file name and directory: `../../result/{stock ticker}_{start date}_{end date}.png`
-   - [click here for example graph](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
+   - [click here for example graph](example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
 3. print back test table in .csv file
    - default file name and directory: `../../result/roll_result_{stock ticker}_{start date}_{end date}.csv`
    - [click here to see details of all columns in roll result tabble](#columnsinStockAccount.txn:)
-   - [click here for eample file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+   - [click here for eample file](example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 4. print analysis data and logging  in ./log/*.log 
 
 
@@ -312,8 +305,8 @@ if parameters are passed in from both side, only parameters from config file wil
 
 - use `stock_analyser.py` and `backtest.py` by importing class
 - See demo files: 
-  - [demo/demo_stock_analyser_backtest.ipynb](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/demo/demo_stock_analyser_backtest.ipynb)
-  - [demo/demo_stock_analyser_backtest.py](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/demo/demo_stock_analyser_backtest.py)
+  - [demo/demo_stock_analyser_backtest.ipynb](/demo/demo_stock_analyser_backtest.ipynb)
+  - [demo/demo_stock_analyser_backtest.py](/demo/demo_stock_analyser_backtest.py)
   
 ##  5. <a name='DetailsofStockAnalyser.stock_data'></a>Details of `StockAnalyser.stock_data`
 
@@ -328,7 +321,7 @@ main class of `stock_analyser.py` is `StockAnalyser`, which contain attribute `s
 - produce:  
   - stock_data csv file ( `../../result/stock_data_{stock ticker}_ {start date}_{end date}.csv` )
 - sample file:  
-  - [/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+  - [/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv](example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 
 ###  5.1. <a name='columnsinStockAnalyser.stock_data:'></a>columns in `StockAnalyser.stock_data`:
 
@@ -364,10 +357,10 @@ class `StockAccount` in `backtest.py` contain the back test information of each 
 - produce:
   - roll result of back test (`../../result/roll_result_{stock ticker}_{start date}_{end date}.csv`)
 - sample file:
-  -  [/exmaple/roll_result_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+  -  [/exmaple/roll_result_tsla_2022-08-01_2023-08-25_example.csv](example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 - If list of stock is run, will produce a csv file record revenue of each stock: `../../result/all_revenue.csv`
 
-  - sample file of [all_revenue](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/all_revenue_top50_SP500_period1_MACD_condition11.csv?ref_type=heads)
+  - sample file of [all_revenue](example/all_revenue_top50_SP500_period1_MACD_condition11.csv?ref_type=heads)
 
 ###  6.1. <a name='columnsinStockAccount.txn:'></a>columns in  `StockAccount.txn`:
 
@@ -508,17 +501,17 @@ Parameter of `StockAnalyser.default_analyser`
 ##  10. <a name='ExampleResult'></a>Example Result
 ###  10.1. <a name='BatchofBackTest'></a>Batch of Back Test
 - batch of back test using different period and buy, sell condition is conducted
-- shown in [/example](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/example?ref_type=heads) folder 
-- summary of result: [exmaple_result.md](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/example_result.md)
+- shown in [/example](example?ref_type=heads) folder 
+- summary of result: [exmaple_result.md](example/example_result.md)
 
-###  10.2. <a name='ExamplePlot'></a>Plotting Extrema from Different Source
+###  10.2. <a name='PlottingExtremafromDifferentSource'></a>Plotting Extrema from Different Source
 result of plotting extrema from different price source: 
-- [result_plot_extrema.pdf](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/result_plot_extrema.pdf?ref_type=heads)
-- Example plot: [/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
+- [result_plot_extrema.pdf](result_plot_extrema.pdf?ref_type=heads)
+- Example plot: [/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png](example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
   - break point found by peak-bottom
 
 
-###  10.3. <a name='exampleplot'></a>Example plot
+###  10.3. <a name='Exampleplot'></a>Example plot
 
 ![Alt text](example/TSLA_2023-03-01_2023-07-01.png)
 
@@ -583,157 +576,12 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 ##  13. <a name='Bugtobesolved:'></a>Bug to be solved:
 - ema (hence MACD) in early segment of stock data is not accurate, since ema is calculate base on yesturday's ema, so much earlier data before the specified start is required to get an accurate ema
 
-- refer to [this issue](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/issues/5)
 
-##  14. <a name='Version'></a>2021 Version
----
 
-- [Todo](#todo)
-  - [1. Goal](#1-goal)
-  - [2. Buy point filters](#2-buy-point-filters)
-    - [2.1. How to add buy point filter](#21-how-to-add-buy-point-filter)
-  - [3. Sell Strategy](#3-sell-strategy)
-  - [4. How to use](#4-how-to-use)
-    - [4.1. Run `stock_analyser.py`](#41-run-stock_analyserpy)
-      - [4.1.1. Description](#411-description)
-      - [4.1.2. Run `stock_analyser.py` in command line](#412-run-stock_analyserpy-in-command-line)
-        - [Arguments](#arguments)
-        - [Example](#example)
-      - [4.1.3. Outputs](#413-outputs)
-    - [4.2. Run `backtest.py`](#42-run-backtestpy)
-      - [4.2.1. Description](#421-description)
-      - [4.2.2. Run `backtest.py` in command line](#422-run-backtestpy-in-command-line)
-        - [Arguments](#arguments-1)
-        - [Example](#example-1)
-      - [4.2.3. Run by config (.json) in command line](#423-run-by-config-json-in-command-line)
-        - [Description](#description)
-        - [Table of parameters in JSON config file](#table-of-parameters-in-json-config-file)
-        - [Example Command](#example-command)
-        - [Example config (Json)](#example-config-json)
-      - [4.2.4. Parameter parsing logic when run in command line](#424-parameter-parsing-logic-when-run-in-command-line)
-      - [4.2.5. Outputs](#425-outputs)
-    - [4.3. Import class](#43-import-class)
-  - [5. Details of `StockAnalyser.stock_data`](#5-details-of-stockanalyserstock_data)
-    - [5.1. columns in `StockAnalyser.stock_data`:](#51-columns-in-stockanalyserstock_data)
-  - [6. Details of `StockAccount.txn`](#6-details-of-stockaccounttxn)
-    - [6.1. columns in  `StockAccount.txn`:](#61-columns-in--stockaccounttxn)
-  - [7. Buy Sell Logic](#7-buy-sell-logic)
-  - [8. Log](#8-log)
-  - [9. Advanced Settings](#9-advanced-settings)
-    - [9.1. Source of Extrema:](#91-source-of-extrema)
-    - [9.2. Source of uptrend](#92-source-of-uptrend)
-    - [9.3. Parameter of StockAnalyser.default\_analyser](#93-parameter-of-stockanalyserdefault_analyser)
-  - [10. Example Result](#10-example-result)
-    - [10.1. Batch of Back Test](#101-batch-of-back-test)
-    - [10.2. Plotting Extrema from Different Source](#102-plotting-extrema-from-different-source)
-    - [10.3. Example plot](#103-example-plot)
-  - [11. Unit Test](#11-unit-test)
-    - [11.1. Test script](#111-test-script)
-      - [11.1.1. Expected Output](#1111-expected-output)
-    - [11.2. Pytest](#112-pytest)
-      - [11.2.1. Expected Output](#1121-expected-output)
-  - [12. Techniques Studied](#12-techniques-studied)
-    - [12.1. Stock price smoothing technique](#121-stock-price-smoothing-technique)
-  - [13. Bug to be solved:](#13-bug-to-be-solved)
-  - [14. 2021 Version](#14-2021-version)
-- [Logic and Design](#logic-and-design)
-  - [15. Peaks and Bottoms](#15-peaks-and-bottoms)
-    - [15.1. Example](#151-example)
-    - [15.2. Limitations Using Blackman Window](#152-limitations-using-blackman-window)
-    - [15.3. Limitations Using Polynomial Regression](#153-limitations-using-polynomial-regression)
-  - [16. Trend](#16-trend)
-    - [16.1. Example](#161-example)
-    - [16.2. Limitations](#162-limitations)
-- [Reference](#reference)
-  - [17. Smoothing the Data ("Noise" Reduction)](#17-smoothing-the-data-noise-reduction)
-  - [18. Linear Regression](#18-linear-regression)
+##  14. <a name='FurtherStudy'></a>Further Study
 
----
-
-# Logic and Design
-
-##  15. <a name='PeaksandBottoms'></a>Peaks and Bottoms
-
-![](./docs/Screenshot%202021-08-16%20184841.png)
-
-- First smooth the stock data and remove the "noise". (See [Smoothing the Data ("Noise" Reduction)](#smoothing-the-data-noise-reduction))
-- Find the approximate peaks and bottoms using the smoothed trend
-- Find the actual peaks and bottoms using the real data
-
-###  15.1. <a name='Example'></a>Example
-
-![](./docs/NVDA%20Peaks%20and%20Bottoms.png)
-
-###  15.2. <a name='LimitationsUsingBlackmanWindow'></a>Limitations Using Blackman Window
-
-For a longer period of time, the value of `smooth_data_N` and `find_extrema_interval` has to change to other value.
-
-`"NVDA", start="2010-01-01", end="2021-08-16"`
-
-`smooth_data_N = 15, find_extrema_interval = 5`
-
-![](./docs/NVDA%20Peaks%20and%20Bottoms%202.png)
-
-Solution:
-
-`smooth_data_N = 100, find_extrema_interval = 25`
-
-![](./docs/NVDA%20Peaks%20and%20Bottoms%203.png)
-
-###  15.3. <a name='LimitationsUsingPolynomialRegression'></a>Limitations Using Polynomial Regression
-
-The degree cannot be too large when there are a lot of data.
-
-It might not work when the given period (number of record) is too large. 
-
----
-
-##  16. <a name='Trend'></a>Trend
-
-- Use linear regression and plot a best-fit line.
-
-###  16.1. <a name='Example-1'></a>Example
-
-`stock_info = yf.download("^HSI", start="2000-01-01", end="2003-06-15")`
-
-![HSI Linear Regression](./docs/HSI%20Linear%20Regression.png)
-
-`stock_info = yf.download("NVDA", start="2021-01-01", end="2021-08-16")`
-
-![NVDA Linear Regression](./docs/NVDA%20Linear%20Regression.png)
-
-###  16.2. <a name='Limitations'></a>Limitations
-
-The best-fit line might not be perfect.
-
-`stock_info = yf.download("AAPL", start="2000-01-01", end="2021-08-16")`
-
-![Inaccuracy for long period](./docs/AAPL%20Linear%20Regression.png)
-
-`stock_info = yf.download("AAPL", start="2000-01-01", end="2003-06-15")`
-
-![Sudden drop](./docs/AAPL%20Linear%20Regression%202.png)
-
----
-
-# Reference
-
-##  17. <a name='SmoothingtheDataNoiseReduction'></a>Smoothing the Data ("Noise" Reduction)
-
-Current approach in smoothing the data (Blackman Window):
-
-https://books.google.com.hk/books?id=m2T9CQAAQBAJ&pg=PA189&lpg=PA189&dq=numpy+blackman+and+convolve&source=bl&ots=5lqrOE_YHL&sig=ACfU3U3onrK4g3uAo3a9FLT_3yMcQXGfKQ&hl=en&sa=X&ved=2ahUKEwjE8p-l-rbyAhVI05QKHfJnAL0Q6AF6BAgQEAM#v=onepage&q=numpy%20blackman%20and%20convolve&f=false
-
-Another approach in smoothing the data with polynomial regression:
-
-https://numpy.org/doc/stable/reference/generated/numpy.polyfit.html
-
-Another approach in smoothing the data:
-
-https://towardsdatascience.com/in-12-minutes-stocks-analysis-with-pandas-and-scikit-learn-a8d8a7b50ee7
-
-##  18. <a name='LinearRegression'></a>Linear Regression
-
-https://medium.com/analytics-vidhya/stock-prediction-using-linear-regression-cd1d8351f536
-
-https://towardsdatascience.com/linear-regression-in-6-lines-of-python-5e1d0cd05b8d
+1. find maximum draw down
+2. maximum amount of fund actually put into market (currently calculated as maximum market value)
+     - say I am watching 50 stocks with $10,000 allocated for each ($500,000 in total) 
+     - I buy whenver buy signal appear for each stock
+     - I want to know maximum amount of money actually held in the market at the same time over the period
