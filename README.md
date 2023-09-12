@@ -61,7 +61,7 @@ The project look for buy points and sell points on historic stock price, user ca
 - details refer to section [Details of `StockAnalyser.stock_data`](#DetailsofStockAnalyser.stock_data)
 
 `BackTest` in app/back_test.py
-- conduct back test with specified buy, sell strategy and period on a stock or group of stocks, calulate gain / loss over a period
+- conduct back test with specified buy, sell strategy and period on a stock or group of stocks, calculate gain / loss over a period
 
 `StockAccount` in app/back_test.py
 - save the result of back test of a group of stocks
@@ -158,7 +158,7 @@ arguments of running `stock_analyser.py` in command line
 |`-t` `--ticker` | stock ticker| PDD
 |`-s` `--start` | start date| 2023-01-01|
 | `-e` `--end` | end date|2023-08-01|
-| `-f` `--stocklist_file`| stock list file (.txt)|./stock_list.txt<br>([exmaple file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/app/configs/hot25stocks.txt?ref_type=heads))|
+| `-f` `--stocklist_file`| stock list file (.txt)|./stock_list.txt<br>([exmaple file](app/configs/hot25stocks.txt?ref_type=heads))|
 |`-v` `--csv_dir` | file directory of stock data and roll result csv to save in|../result|
 | `-g` `--graph_dir` | file directory of graph to save in|../graph_dir|
 |`-o` `--showopt` | graph show option |"save" - save to graph_dir<br>"show" - show by plot.show()<br>"no" - don't plot graph   |
@@ -186,10 +186,10 @@ python stock_analyser.py -f=./configs/2stocks.txt -s=2022-08-01 -e=2023-08-01 -g
 1. print analysis data in .csv file 
      - default file name and directory: `../../result/stock_data_{stock ticker}_{start date}_{end date}.csv`
      - [click here to see details of all columns in stock data table](#columnsinStockAnalyser.stock_data:)
-     - [click here for example file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+     - [click here for example file](example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 2. produce analysis graph in .png file
     - default file name and directory: `../../result/{stock ticker}_{start date}_{end date}.png`
-    - [click here for example graph](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
+    - [click here for example graph](example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
 3. print analysis data and logging  in ./log/*.log 
 
 
@@ -308,7 +308,7 @@ python backtest.py -j=./configs/backtest_config_example.json
 ```
 
 - More config example:
-  - see folder [app/configs](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/app/configs?ref_type=heads)
+  - see folder [app/configs](app/configs?ref_type=heads)
 ####  4.2.4. <a name='Parameterparsinglogicwhenrunincommandline'></a>Parameter parsing logic when run in command line
 
 All param has to come from same source (e.g. all from command line, or all from config)
@@ -321,14 +321,14 @@ if parameters are passed in from both side, only parameters from config file wil
 1. print analysis data in .csv file 
    - default file name and directory: `../../result/stock_data_{stock ticker}_{start date}_{end date}.csv`
    -  [click here to see details of all columns in stock data table](#columnsinStockAnalyser.stock_data:)
-   - [click here for example file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+   - [click here for example file](example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 2. produce analysis graph in .png file
    - default file name and directory: `../../result/{stock ticker}_{start date}_{end date}.png`
-   - [click here for example graph](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
+   - [click here for example graph](example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
 3. print back test table in .csv file
    - default file name and directory: `../../result/roll_result_{stock ticker}_{start date}_{end date}.csv`
    - [click here to see details of all columns in roll result tabble](#columnsinStockAccount.txn:)
-   - [click here for eample file](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+   - [click here for eample file](example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 4. print analysis data and logging  in ./log/*.log 
 
 
@@ -337,8 +337,8 @@ if parameters are passed in from both side, only parameters from config file wil
 
 - use `stock_analyser.py` and `backtest.py` by importing class
 - See demo files: 
-  - [demo/demo_stock_analyser_backtest.ipynb](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/demo/demo_stock_analyser_backtest.ipynb)
-  - [demo/demo_stock_analyser_backtest.py](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/demo/demo_stock_analyser_backtest.py)
+  - [demo/demo_stock_analyser_backtest.ipynb](/demo/demo_stock_analyser_backtest.ipynb)
+  - [demo/demo_stock_analyser_backtest.py](/demo/demo_stock_analyser_backtest.py)
   
 ##  5. <a name='DetailsofStockAnalyser.stock_data'></a>Details of `StockAnalyser.stock_data`
 
@@ -353,7 +353,7 @@ main class of `stock_analyser.py` is `StockAnalyser`, which contain attribute `s
 - produce:  
   - stock_data csv file ( `../../result/stock_data_{stock ticker}_ {start date}_{end date}.csv` )
 - sample file:  
-  - [/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+  - [/example/stock_data_tsla_2022-08-01_2023-08-25_example.csv](example/stock_data_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 
 ###  5.1. <a name='columnsinStockAnalyser.stock_data:'></a>columns in `StockAnalyser.stock_data`:
 
@@ -389,10 +389,10 @@ class `StockAccount` in `backtest.py` contain the back test information of each 
 - produce:
   - roll result of back test (`../../result/roll_result_{stock ticker}_{start date}_{end date}.csv`)
 - sample file:
-  -  [/exmaple/roll_result_tsla_2022-08-01_2023-08-25_example.csv](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
+  -  [/exmaple/roll_result_tsla_2022-08-01_2023-08-25_example.csv](example/roll_result_tsla_2022-08-01_2023-08-25_example.csv?ref_type=heads)
 - If list of stock is run, will produce a csv file record revenue of each stock: `../../result/all_revenue.csv`
 
-  - sample file of [all_revenue](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/all_revenue_top50_SP500_period1_MACD_condition11.csv?ref_type=heads)
+  - sample file of [all_revenue](example/all_revenue_top50_SP500_period1_MACD_condition11.csv?ref_type=heads)
 
 ###  6.1. <a name='columnsinStockAccount.txn:'></a>columns in  `StockAccount.txn`:
 
@@ -533,13 +533,13 @@ Parameter of `StockAnalyser.default_analyser`
 ##  10. <a name='ExampleResult'></a>Example Result
 ###  10.1. <a name='BatchofBackTest'></a>Batch of Back Test
 - batch of back test using different period and buy, sell condition is conducted
-- shown in [/example](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/tree/enhance-data-presentation/example?ref_type=heads) folder 
-- summary of result: [exmaple_result.md](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/example_result.md)
+- shown in [/example](example?ref_type=heads) folder 
+- summary of result: [exmaple_result.md](example/example_result.md)
 
 ###  10.2. <a name='PlottingExtremafromDifferentSource'></a>Plotting Extrema from Different Source
 result of plotting extrema from different price source: 
-- [result_plot_extrema.pdf](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/result_plot_extrema.pdf?ref_type=heads)
-- Example plot: [/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/blob/enhance-data-presentation/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
+- [result_plot_extrema.pdf](result_plot_extrema.pdf?ref_type=heads)
+- Example plot: [/example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png](example/tsla_2022-08-01_2023-08-25_bp_by_peak_bottom.png?ref_type=heads)
   - break point found by peak-bottom
 
 
@@ -608,7 +608,6 @@ detail discussion of pros and cons of different techniques see `technique_and_th
 ##  13. <a name='Bugtobesolved:'></a>Bug to be solved:
 - ema (hence MACD) in early segment of stock data is not accurate, since ema is calculate base on yesturday's ema, so much earlier data before the specified start is required to get an accurate ema
 
-- refer to [this issue](https://gitlab.com/asiabots/edward/stock-peak-bottom/-/issues/5)
 
 
 ##  14. <a name='FurtherStudy'></a>Further Study
