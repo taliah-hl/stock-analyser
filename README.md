@@ -12,7 +12,7 @@
 - [10. Example Result](#10-example-result)
 - [11. Unit Test](#11-unit-test)
 - [12. Techniques Studied](#12-techniques-studied)
-- [13. Bug to be solved:](#13-bug-to-be-solved)
+- [13. Bug to be solved](#13-bug-to-be-solved)
 - [14. Further Study](#14-further-study)
 
 
